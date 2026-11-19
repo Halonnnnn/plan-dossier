@@ -21,9 +21,8 @@ It defines:
 
 It does not prescribe:
 
-- How downstream agents execute tasks: tool order, editing procedure, execution sequencing.
+- How downstream agents execute tasks and respond to deviations or failures: tool order, editing procedure, sequencing.
 - How artifacts are consumed: read order, verification timing, recovery procedure.
-- How agents respond to execution deviations or failures.
 - Reviewer behavior or review procedures.
 
 For artifacts written during execution, the responsibility split:
@@ -35,15 +34,11 @@ For artifacts written during execution, the responsibility split:
 | Deviations | what a deviation record means and contains | what actually gets recorded |
 | State Snapshot | what the snapshot must express | when to update and consume |
 
-Stated plainly: resume is opt-in — the artifacts provide the checkpoint; nothing guarantees downstream maintains it. Removing execution prescriptions removes no data-integrity requirements; it only moves "when and who" to the downstream agent.
+Resume is opt-in: the artifacts provide the checkpoint; nothing guarantees downstream maintains it. Removing execution prescriptions removes no data-integrity requirements — only "when and who" moves downstream.
 
-## Trigger Conditions
+## Form Selection
 
-Triggers when the user asks for a plan for cross-phase or handoff-prone work: planning, task breakdown, or producing a plan document. After triggering, select the artifact form per the next section. When none of the full-form conditions hold and the task is small, plain text is the default recommendation — creating artifacts is never mandatory.
-
-## Form Selection After Trigger
-
-After triggering, judge the form from the task's traits (full / minimal / plain text), state the judgment and its reason in one line, and start — do not ask the user to confirm a self-explanatory judgment. Ask only when the task's scope is genuinely unclear (e.g. it could plausibly be either full or plain text, or it touches a boundary like schema or security). If the user's instruction already pins the form ("produce a full plan", "just give me a simple list"), follow it directly.
+After triggering, judge the form from the task's traits (full / minimal / plain text), state the judgment and its reason in one line, and start — do not ask the user to confirm a self-explanatory judgment. When none of the full-form conditions hold and the task is small, plain text is the default — creating artifacts is never mandatory. Ask only when the task's scope is genuinely unclear (e.g. it could plausibly be either full or plain text, or it touches a boundary like schema or security). If the user's instruction already pins the form ("produce a full plan", "just give me a simple list"), follow it directly.
 
 **Full form** (all four layers + views). Recommend when any of the following holds:
 
@@ -75,29 +70,15 @@ Rendering `views/plan.view.md` follows the form default: full form renders by de
 
 ## Directory Structure
 
-```text
-.plan-dossier/
-├── plan.yaml              # L0 frozen global contract: goal/constraints/acceptance/DAG/decisions/exclusions
-├── tasks/                 # L1 task cards: one card per node; each executor loads only its own
-│   ├── 01_extract_validator.yaml
-│   └── 02_replace_callers.yaml
-├── ledger.jsonl           # L2 search ledger: append-only; records locations/conclusions/costs
-├── handoff/               # L3 execution-time handoff: written by upstream, read by downstream
-│   └── 01_to_02.md
-└── views/                 # compiled output, deletable and rebuildable, never the source of truth
-    ├── plan.view.md       # human review view (rendered from L0 + L1)
-    └── review.packet.md   # review isolation view (compiled at review handoff)
-```
+All under `.plan-dossier/`. Each layer binds to one staleness mode, which determines its change rules and verification method:
 
-Each layer binds to one staleness mode, which determines its change rules and verification method:
-
-| Layer | Artifact | Readers | Change rule | Verification |
+| Layer | File | Readers | Change rule | Verification |
 |---|---|---|---|---|
 | L0 | plan.yaml | all roles, resident | frozen; changing it bumps the version and archives the old file | human judgment + schema check |
-| L1 | tasks/*.yaml | only the owning executor | frozen together with L0 | cites reference existence check |
+| L1 | tasks/NN_*.yaml | only the owning executor | frozen together with L0 | cites reference existence check |
 | L2 | ledger.jsonl | planner/executor, on demand | append-only; revisions via supersedes | lazy region_sha comparison (optional) |
-| L3 | handoff/*.md | downstream executor | appended after each completed step | latest file wins |
-| views | *.md | humans/reviewers | rebuildable at any time | derived; no verification needed |
+| L3 | handoff/NN_to_MM.md | downstream executor | appended after each completed step | latest file wins |
+| views | plan.view.md, review.packet.md | humans/reviewers | rebuildable at any time | derived; no verification needed |
 
 ## Artifact Specs
 
@@ -192,7 +173,7 @@ Append-only, one entry per line:
 {"id": "L-0042", "locator": {"path": "src/payment.py", "span": [20, 45]}, "verdict": "relevant", "intent": "locate the payment validation entry point", "cost": {"tool_calls": 12, "tokens": 4800}, "by": {"model": "planner-a", "run": "r17", "at": "2026-11-19T10:02:00+08:00"}, "supersedes": null, "region_sha": "sha256:44ae...", "invalidation": ["PaymentService.validate's signature changes", "src/payment.py is moved or renamed"]}
 ```
 
-Whether to record is decided by reacquisition cost, measured in search effort, not read effort. Recording is always discretionary: an entry is written only when its value (reacquisition cost × expected reuse) clearly exceeds the writing cost, and an empty or sparse ledger.jsonl is acceptable — never record for compliance:
+Recording is always discretionary, decided by reacquisition cost measured in search effort (not read effort): write an entry only when its value (reacquisition cost × expected reuse) clearly exceeds the writing cost; an empty or sparse ledger is acceptable — never record for compliance:
 
 | Scenario | Record? | Why |
 |---|---|---|
@@ -257,7 +238,7 @@ packet = system prompt + plan.yaml + ledger index + current task card + upstream
 
 - Stable content first (plan.yaml, ledger index), volatile content last (current task card, handoff, on-demand snippets). The order is the prompt assembly order; a stable prefix hits the cache.
 - Total budget: 4K tokens. When over budget, truncate in this order: ledger index first, then open_questions; `excluded`, `constraints`, `risks`, and `gaps` are never truncated.
-- views/plan.view.md, once generated, has exactly one reader: the human approver. The packet contains no views.
+- The packet contains no views.
 - No source content in the packet; snippets are loaded per step, outside the packet.
 - Each ledger-index line: entry ID, path and line range, verdict, cost, one-line purpose. No hashes.
 - End the index by listing the count and estimated size of unselected entries. Consumers must know the information is incomplete — otherwise they face a false choice between re-reading everything and trusting everything.
@@ -282,7 +263,7 @@ Execution behavior belongs to the downstream agent's own workflow — this spec 
 
 ### Review Phase
 
-The review packet is compiled at handoff (see views/). Isolation is a property of the packet's content — it contains no plan, ledger, or handoff — not a rule imposed on the reviewer. How the reviewer works is downstream's own process; the handoff may serve as a search clue, never as evidence.
+The review packet is compiled at handoff (see views/); isolation is a property of its content, not a rule imposed on the reviewer. How the reviewer works is downstream's own process; the handoff may serve as a search clue, never as evidence.
 
 ## Staleness Handling
 
@@ -313,17 +294,12 @@ Run each item before delivering a `.plan-dossier/`; fix anything that fails firs
 
 ## Common Mistakes
 
-- **Writing L0 as a long prose document.** A bloated L0 gets re-paid by every role at every handoff, mostly with content irrelevant to the current role.
-- **Task cards copying ledger or source content.** Cards reference IDs only. Copying wastes tokens and creates inconsistencies.
+Mistakes not already covered by a rule above — each restates a failure mode the rules do not name:
+
+- **Writing L0 as a long prose document.** It is re-paid by every role at every handoff, mostly with content irrelevant to the current role.
 - **Omitting exclusions.** Writing "how" without "why not the other way" is the number one cause of executors regressing when they hit resistance.
-- **Storing source quotations in the ledger.** Stored content rots silently with no detection; the ledger stores only locations, conclusions, and costs.
-- **Putting search records into plan.yaml.** The plan is frozen; high-frequency writes break the freeze.
-- **Demanding a conclusion annotation for every file.** High output burden, unstable quality — record only expensive searches.
-- **Replacing the ledger with vector search.** Vectors store similarity, not the judgments already made (relevant/excluded) — and the main cost of re-searching is exactly the judgment.
 - **Replacing handoffs with checkboxes.** Resuming needs real output paths and deviation records; `[x]` cannot carry context into a new session.
 - **Giving the reviewer the plan or exclusions.** It destroys review independence; exclusions also tempt the reviewer to skip regions.
-- **Voiding all records whenever a file changes.** One changed line voiding the whole ledger drives reuse to zero; handle only affected entries.
-- **Treating a claim as verification.** Marking checked without actually running replay lets trust silently propagate along the role chain; downstream inherits wrong conclusions verbatim.
 
 ## Degradation and Runtime Support
 
