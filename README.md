@@ -1,44 +1,41 @@
 # Plan Dossier
 
-[English](README.md) | [中文](README.zh-CN.md)
+English | [中文](README.zh-CN.md)
 
-A `.plan-dossier/` artifact spec and workflow for long, cross-phase tasks: planning, execution, and review share four layers of artifacts partitioned by how they go stale — eliminating second searches and second planning during execution while keeping the review phase independent.
+A `.plan-dossier/` artifact spec and workflow for long, cross-phase tasks. Planning, execution, and review share four layers of artifacts, and each layer is partitioned by how it goes stale. Executors do not repeat searches or planning, and reviewers stay independent.
 
-The full skill definition lives in [skill/](skill) — [SKILL.md](skill/SKILL.md) plus three on-demand references under [references/](skill/references).
+The skill is defined in [skill/](skill): [SKILL.md](skill/SKILL.md) plus three on-demand references under [references/](skill/references).
 
 ---
 
-## The Problem
-
-Planner → Executor is the dominant pattern for multi-agent and resumable workflows: a strong reasoning model plans and produces a `plan.md`; other agents read it and execute step by step. The problem is not the process but the artifact: **we use a human-facing view directly as machine-facing state.**
-
-The plan document is a lossy compression of the entire exploration process. What the executor can read is only the prose — the most valuable intermediate knowledge of planning is lost:
-
-- **Negative knowledge is lost.** The planner evaluated options A, B, C and excluded A and B for a hidden dependency before choosing C, but the plan only says "adopt C". When the executor hits resistance it either re-investigates (burning tokens) or "cleverly" reverts to option A and steps on the mine (second planning).
-- **Original anchors are lost.** The planner read concrete line numbers, signatures, and raw data; writing them into the plan degrades them into "follow the existing auth logic". With only the conclusion, the executor has no choice but to grep again (second search).
-- **Dynamic state is lost.** A static plan cannot carry deviations and discoveries from execution, and recovery after an interruption is imprecise.
-
-The fix is not a longer plan (it would be re-paid at every handoff, the projection stays lossy, and churn destroys trust). The fix is partitioning: **locations go into a ledger, dynamic state into a handoff layer, rendered views for humans** — each layer verified by the method that matches its staleness mode.
-
 ## Install
 
-This skill is plain files — no runtime dependency, works in any agent harness that reads a SKILL.md. The installable unit is the [skill/](skill) directory — `SKILL.md` plus three references it links on demand.
+The skill is plain files with no runtime dependency. Any agent harness that reads a SKILL.md can use it. The installable unit is the [skill/](skill) directory: `SKILL.md` plus the three references it loads on demand.
 
 ```bash
 npx skills add Halonnnnn/plan-dossier
 ```
 
-The CLI scans the repo and offers the two language variants for interactive selection — `plan-dossier` (English) and `plan-dossier-zh` (Chinese) — then maps the chosen skill into every detected agent's skill directory (Claude Code, Codex, Cursor, Qoder, `~/.agents`, and more), symlinking by default (`--copy` for real copies) and writing a `skills-lock.json` for reproducible restores. To pick a variant non-interactively: `npx skills add Halonnnnn/plan-dossier --skill plan-dossier-zh`. Restart your agent session so the skill is discovered, then trigger it by asking for a plan.
+The CLI then scans the repo and:
+
+- asks you to pick a language variant: `plan-dossier` (English) or `plan-dossier-zh` (Chinese);
+- links the skill into every agent skill directory it detects — Claude Code, Codex, Cursor, Qoder, `~/.agents`, and more (`--copy` to copy files instead of symlinking);
+- writes `skills-lock.json` so installs can be restored.
+
+Pick the Chinese variant without the prompt: `npx skills add Halonnnnn/plan-dossier --skill plan-dossier-zh`. Restart the agent session so it discovers the skill, then ask for a plan to trigger it.
 
 ### Manual install (no npx)
 
-Fetch the four files — `SKILL.md` plus `references/schema.md`, `references/workflow-rules.md`, `references/checklist.md` — from `https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/skill/` into your agent's skill directory with `curl -fsSL <url> -o <dest> --create-dirs`, or clone the repo and copy the `skill/` directory over (Chinese variant: `skill-zh/`). Keep the `references/` subdirectory layout and the `name:` frontmatter. As a repo convention, you can also vendor the `skill/` directory so every agent working in the repo shares the same `.plan-dossier/` spec.
+Either route keeps the `references/` layout and the `name:` frontmatter:
 
-The Chinese version lives at [skill-zh/SKILL.md](skill-zh/SKILL.md); installing the English one is enough — the skill produces language-neutral YAML/JSONL artifacts.
+- **curl**: fetch `SKILL.md` and the three files under `references/` from `https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/skill/` — `curl -fsSL <url> -o <dest> --create-dirs`.
+- **clone**: copy the `skill/` directory out of the repo (Chinese variant: `skill-zh/`).
+
+The English version is enough: the artifacts are language-neutral YAML and JSONL. The Chinese skill is at [skill-zh/SKILL.md](skill-zh/SKILL.md). To share one spec across a repo, vendor the `skill/` directory into it.
 
 ### Optional: machine validation
 
-The skill runs with no tooling at all. If you want machine-checked artifacts, the repo also ships a `validate` CLI (Node.js ≥ 18, `spec/` JSON Schemas + semantic invariants):
+The skill needs no tooling. For machine-checked artifacts, the repo ships a `validate` CLI (Node.js ≥ 18, JSON Schemas in `spec/`, plus semantic invariants):
 
 ```bash
 git clone https://github.com/Halonnnnn/plan-dossier /tmp/plan-dossier
@@ -46,40 +43,44 @@ cd /tmp/plan-dossier/cli && npm install
 node bin/plan-dossier.js validate /path/to/.plan-dossier
 ```
 
-Exit code 0 with errors listed as `warn:` means the structure passed and only heuristics flagged something; exit 1 lists deterministic violations (broken cites, missing trust fields, DAG cycles, malformed ledger lines). The spec is versioned as `spec/VERSION` and currently `0-draft` — not a frozen commitment.
+- Exit `0`: the structure passed; `warn:` lines are heuristic notes only.
+- Exit `1`: hard violations — broken cites, missing trust fields, DAG cycles, malformed ledger lines.
+
+The spec is versioned in `spec/VERSION` and is currently `0-draft`, so it is not a frozen commitment.
+
+## Quick Start
+
+1. Read [skill/SKILL.md](skill/SKILL.md). After triggering, the skill picks a form (full, minimal, or plain text) and decides whether to render the view. It states the choice in one line and asks only when the scope is unclear.
+2. Planning is done when L0 and L1 are frozen, the ledger is in place, and the approval target (the rendered view or plan.yaml) has passed review.
+3. Execution follows the downstream agent's own workflow. The dossier holds the state: `dag[].status` is the resume checkpoint, and handoffs record outputs, deviations, and state snapshots.
+4. For review, compile `review.packet.md`. It contains only the request, the diff, the before and after files, and the acceptance criteria. The review process is up to the reviewer.
+
+## The Problem
+
+Planner → executor is the common pattern for multi-agent and resumable workflows. A strong model plans and writes a `plan.md`, and other agents read it and execute step by step. The process works. The artifact does not: **a human-facing view is used directly as the machine's execution state.**
+
+A plan is a lossy compression of the exploration behind it. The executor only sees prose, so three kinds of knowledge are lost:
+
+- **Negative knowledge.** The planner rejected options A and B because of a hidden dependency, then chose C. The plan says only "adopt C". When the executor meets resistance, it either re-investigates and spends tokens, or reverts to A and hits the same problem. That is a second planning pass.
+- **Original anchors.** The planner read line numbers, signatures, and raw data. The plan turns them into "follow the existing auth logic", so the executor has to grep again.
+- **Dynamic state.** A static plan cannot record deviations found during execution, so recovery after an interruption is imprecise.
+
+A longer plan does not fix this. Every handoff pays for it again, it stays lossy, and frequent edits erode trust. Split the content instead: **locations go into a ledger, dynamic state goes into a handoff layer, and rendered views are for humans.** Each layer is checked by the method that fits how it goes stale.
 
 ## How It Works
 
-One pass through the workflow, and which artifacts each phase reads and writes:
+One pass through the workflow, with the artifacts each phase reads and writes:
 
-```text
-          writes                      writes
-planner ───────► L0 plan.yaml ──── freeze ────┐
-   │  (explores repo,                         │ packet assembly
-   │   appends L2 ledger)                     ▼
-   │                              ┌──────── executor ────────┐
-   │                              │ reads: plan.yaml, ledger │
-   │                              │ index, own task card     │
-   │                              │ writes: dag[].status,    │
-   │                              │ handoff/NN_to_MM.md      │
-   │                              └──────────┬───────────────┘
-   │                                         │ (per node, until DAG done)
-   └── L1 task cards ──► tasks/*.yaml        ▼
-                                  review ◄── views/review.packet.md
-                                  (isolated: no plan, no ledger,
-                                   re-reads changed files)
-```
+![Workflow overview: the planner writes L0, L1, and the ledger; each executor reads its packet and writes status plus handoff; review sees only the compiled packet](assets/workflow-en.jpeg)
 
-Key mechanics, one line each:
-
-- **L0 + L1 freeze at approval.** Frozen bytes are stable, so they hit prompt prefix caches across handoffs and model switches. Changes go through a version bump that archives the old file; `dag[].status` write-back is the only runtime mutation and is the resume checkpoint.
-- **L2 ledger is append-only.** Entries store locations and conclusions (never source content), costs, and `verdict: relevant | excluded | unknown`. Revisions append a new line with `supersedes`. region_sha makes verification cheap whenever a snippet is loaded.
-- **L3 handoff has three mandatory sections** — Actual Outputs, Deviations, State Snapshot — so a fresh session resumes with real paths and known-stale entries, not checkboxes.
-- **The packet is role-tailored and budgeted at 4K tokens**: stable content first (plan.yaml, ledger index) to protect prefix caching; on overflow the ledger index truncates first while `excluded`, `constraints`, `risks`, `gaps` are never truncated.
-- **Review isolation**: the reviewer gets only the original request, the diff, and full before/after files. Prior conclusions are exactly what tends to be wrong; the reviewer never sees them.
-- **Trust is replayable, not claimed.** Every `trust: checked` fact carries an `assertion.replay` — a command the planner actually ran — so any consumer can re-validate the conclusion at one command's cost.
-- **Anti-regression is explicit.** `excluded` lists what was ruled out and why (frozen, resident); `risks` maps each risk to the acceptance entry that mitigates it (`mitigated_by` anchors); `gaps` declares which judgment dimensions the plan deliberately leaves to the executor.
-- **Planning-only scope.** The skill authors the artifacts and defines their semantics; execution, verification, recovery, and review workflows belong to the downstream agents. Resume is opt-in: the checkpoint exists, maintaining it is downstream's call.
+- **L0 and L1 freeze at approval.** Frozen bytes stay stable, so they hit the prompt prefix cache across handoffs and model switches. Changes go through a version bump, and the old file is archived. `dag[].status` write-back is the only runtime change, and it is the resume checkpoint.
+- **The L2 ledger is append-only.** Each entry stores a location and a conclusion, never source content. It also stores cost and `verdict: relevant | excluded | unknown`. A revision appends a new line with `supersedes`. `region_sha` keeps the check cheap when a snippet loads.
+- **L3 handoffs have three required sections:** Actual Outputs, Deviations, and State Snapshot. A new session resumes from real output paths and known stale entries, not from checkboxes.
+- **Packets are tailored per role and capped at 4K tokens.** Stable content goes first (plan.yaml, the ledger index) to protect the prefix cache. On overflow, the ledger index is truncated first. `excluded`, `constraints`, `risks`, and `gaps` are never truncated.
+- **Reviewers see only the request, the diff, and the full before and after files.** Earlier conclusions are where errors are most likely, so the reviewer never sees them.
+- **Trust is replayable, not asserted.** Each `trust: checked` fact has an `assertion.replay`, a command the planner actually ran. Any consumer can re-check the conclusion for the cost of one command.
+- **Exclusions and risks are explicit.** `excluded` lists what was ruled out and why, and it stays frozen and resident. `risks` maps each risk to the acceptance entry that mitigates it through `mitigated_by`. `gaps` lists the judgment calls the plan leaves to the executor.
+- **The skill covers planning only.** It writes the artifacts and defines what they mean. Execution, verification, recovery, and review belong to the downstream agents. Resume is opt-in: the checkpoint exists, and whether to maintain it is the downstream agent's call.
 
 ## Architecture
 
@@ -97,7 +98,7 @@ Key mechanics, one line each:
     └── review.packet.md   # review isolation view (compiled at review handoff)
 ```
 
-Each layer binds to one staleness mode, which determines its change rules and verification method:
+Each layer is bound to one staleness mode, which sets its change rules and verification method:
 
 | Layer | Artifact | Readers | Change rule | Verification |
 |---|---|---|---|---|
@@ -115,21 +116,21 @@ Role visibility at handoff:
 | Execution | full | own card only | index + on demand | full | on demand | full |
 | Review | not provided | not provided | not provided | not provided | full before/after of changed files | not provided |
 
-Budget rules: L0 ≤ 2K tokens, each task card ≤ 1K, the packet ≤ 4K. When the packet overflows, truncate the ledger index first, then open_questions; `excluded`, `constraints`, `risks`, and `gaps` are never truncated. Assembly order = prompt assembly order: stable content first (system prompt, plan.yaml, ledger index), volatile content last (current task card, handoff, on-demand snippets), protecting the prefix cache.
+Budgets: L0 ≤ 2K tokens, each task card ≤ 1K, the packet ≤ 4K. When the packet overflows, truncate the ledger index first, then open_questions. `excluded`, `constraints`, `risks`, and `gaps` are never truncated. Assembly order matches prompt assembly order: stable content first (system prompt, plan.yaml, ledger index), volatile content last (current task card, handoff, on-demand snippets). This protects the prefix cache.
 
-Artifact organization follows two dimensions — read frequency and change frequency. High-read/low-change content (the plan) must be short and frozen; low-read/high-change content (ledger, handoff) is unbounded and loaded on demand.
+Artifacts are organized along two axes: how often they are read and how often they change. Content that is read often and changes rarely (the plan) must be short and frozen. Content that is read rarely and changes often (the ledger and handoffs) has no length limit and loads on demand.
 
-## Why "Just Write a More Detailed Plan" Fails
+## Design Rationale
 
-The most intuitive direction, and a dead end:
+### Why not just write a more detailed plan
 
-1. **Repeated payment.** A plan is read once per role per turn. Growing it from 1.5K to 20K tokens adds 18.5K to every one of those reads, most of it irrelevant to the current role.
-2. **Projection is irreversible.** A plan is a lossy projection of exploration; length only raises the projection's resolution. Prose descriptions of search results are second-hand transcriptions, less precise than recording the location.
-3. **Churn destroys trust.** Longer plans are harder to maintain; frequently-changing documents lose readability and, with it, their value as decision records.
+1. **Repeated cost.** Each role reads the plan on every turn. Growing it from 1.5K to 20K tokens adds 18.5K to every read, and most of that is irrelevant to the current role.
+2. **The projection is lossy.** A plan is a lossy projection of the exploration. Length only raises its resolution. A prose summary of a search is a second-hand transcription and less precise than recording the location.
+3. **Churn erodes trust.** Long plans are hard to maintain. Documents that change often lose readability and stop working as decision records.
 
-Plan Dossier does not lengthen the plan — it partitions what a plan should not carry into dedicated artifacts: locations into the ledger, dynamic state into the handoff layer, rendered views for humans.
+Plan Dossier does not lengthen the plan. It moves what a plan should not carry into dedicated artifacts: locations into the ledger, dynamic state into the handoff layer, and rendered views for humans.
 
-## Why Existing Mechanisms Fall Short
+### Why existing mechanisms fall short
 
 | Mechanism | Solves | Does not solve |
 |---|---|---|
@@ -138,55 +139,49 @@ Plan Dossier does not lengthen the plan — it partitions what a plan should not
 | RAG | similarity retrieval | stores no judgments made (relevant/excluded) or acquisition cost |
 | Agent memory | persists historical info | lossy summaries, unverifiable, no staleness handling |
 
-Each is valid on its own, but none produces "reusable acquisition results and search judgments". The main cost of re-searching is the judgment, not the lookup — that is exactly what the ledger persists.
-
-## Design Provenance
-
-The spec was merged from two independent drafts: the four-layer directory form (progressive-disclosure `.plan-dossier/`, per-node task cards, DAG parallelism, three-section handoffs, stable-prefix packet ordering) and the verification mechanisms (R1–R4 re-read taxonomy, staleness-based partitioning, acquisition-cost recording, trust grading, three-level staleness handling, review isolation, packet budget, the falsifiable prediction). Key merge decisions and their rationale:
-
-| Source concept | Treatment | Rationale |
-|---|---|---|
-| v1 anchors.md (verbatim quotes) | became ledger.jsonl — locations and conclusions only, no content | stored content rots silently with no detection; locations let content load on demand with lazy region_sha verification |
-| v1 decisions.md (negative knowledge) | split: one-line exclusions into L0 `excluded` (frozen, resident); detailed pitfalls into ledger entries with `verdict: excluded` | the design doc predicted exclusion benefits are the largest (E1 > E3); anti-regression knowledge must be frozen and resident |
-| v1 plan.md (L0) | plan.yaml single source + views/plan.view.md rendering | single source of truth; cites existence is verifiable; no hand-maintained twins |
-| v2 steps inlined in plan.yaml | moved to L1 task cards + cites referencing | per-executor context isolation; fixes v1's "L1 copies L2" inconsistency |
-| v1 prefix-cache ordering + v2 packet budget | merged into one mechanism: packet ordering = prompt assembly order | two faces of one thing: v1 described the order, v2 the budget and tailoring |
-| v2 snippet cache blobs/, blob_sha | excluded from the spec body; see [Degradation and Runtime Support](#degradation-and-runtime-support) | the skill is a file spec; blob storage is tooling and idles without runtime support |
-| v2 trust grading, three-level staleness, supersedes revisions | kept in full | the core of production-grade verifiability |
-| v1 DAG status table | kept in L0 | the resume checkpoint |
-| Naming schemes | ANC-xx / DEC-xx / L-xxxx unified into ledger entries L-xxxx | eliminate dual ID systems |
-
-Field feedback drove seven refinements, now part of the spec:
-
-- **Form confirmation.** Whether `.plan-dossier/` is created and whether `plan.view.md` renders are user-visible decisions, not feature-derived defaults; the minimal form does not render the view by default — approval reads plan.yaml directly. (Later revision: the form is now judged automatically and the judgment stated in one line; the user is asked only when the scope is genuinely unclear.)
-- **Risks with coverage checks.** L0 gains a `risks` field; `mitigated_by` anchors (`aN`, `sM.N`) reference acceptance entries, and reference-integrity checking covers the risk-to-test mapping.
-- **Single source inside the plan.** The same data list is expanded in exactly one place across L0 and task cards; everywhere else references it by anchor or ID.
-- **Gaps declaration.** L0 requires `gaps` (may be empty), explicitly listing judgment dimensions the plan does not cover, semantically separated from `open_questions` (pending rulings); `gaps` and `risks` join the never-truncate list.
-- **Replayable assertions.** `trust: checked` requires a replayable `replay` command the planner has actually executed; the executor replays it lazily before relying on the conclusion.
-- **Views restricted to their reader.** `plan.view.md` serves only the human approver; executor input never contains views.
-- **base.env.** Environment facts (build preconditions, pre-existing baseline failures) live resident in L0 base; staleness is announced via the handoff's State Snapshot.
-
+Each of these works on its own, but none of them produces reusable acquisition results and search judgments. Re-searching costs more in the judgment than in the lookup, and the ledger persists exactly that judgment.
 
 ## Degradation and Runtime Support
 
-This skill is a file spec and runs with no tooling at all: the agent appends ledger entries manually per the recording criteria, an entry without region_sha is consumed by reading the target region when it is used, and verification degrades to "visual comparison + staleness process on mismatch".
+The skill is a file spec and runs with no tooling. The agent appends ledger entries by hand, following the recording criteria. An entry without a region_sha is checked by reading the target region when it is used. Verification falls back to visual comparison, and a mismatch triggers the staleness process.
 
-With runtime support (a hook or MCP tool), two things automate without changing any file format:
+With runtime support (a hook or MCP tool), two things can be automated. Neither changes the file format:
 
-- auto-generate ledger entries and compute region_sha on read/grep/glob calls;
-- auto-run lazy region_sha verification when a snippet loads, prompting re-fetch on staleness; content caching (hash-deduplicated blob storage) can be added further down, but that is tool-layer implementation outside this spec.
+- create ledger entries and compute region_sha on read, grep, and glob calls;
+- run the lazy region_sha check when a snippet loads, and prompt a re-fetch on mismatch.
+
+Content caching (deduplicated blob storage) can go further, but it is tool-layer implementation outside this spec.
 
 ## Evaluation and the Falsifiable Prediction
 
-Report four metrics together: reuse ratio, tool calls from search to first edit, task pass rate, and erroneous-use-after-staleness rate. Any single metric misleads — voiding everything drives "staleness detection rate" to 100%.
+Report four metrics together: reuse ratio, tool calls from search to first edit, task pass rate, and erroneous-use-after-staleness rate. A single metric is misleading. Marking everything stale pushes the "staleness detection rate" to 100%.
 
-The design carries one falsifiable prediction: exclusions (E1) should benefit more than snippet reuse (E3). If measurement shows the opposite, executors mainly lack content rather than location information, and the architecture's weight should shift from search conclusions toward content caching. Evaluations must include two controls: an equal-token control (give the baseline the same extra budget as ordinary prose) and a plan-length control (record plan document length, confirming the benefit does not come from a longer plan).
+The design makes one falsifiable prediction: exclusions (E1) should help more than snippet reuse (E3). If measurements show the reverse, executors mainly lack content rather than location information, and the design should shift from search conclusions toward content caching. Evaluations need two controls: an equal-token control (give the baseline the same extra budget, written as ordinary prose), and a plan-length control (record the plan length, to confirm the gain does not come from a longer plan).
 
 Field results (multiple rounds, single executor, full form): net savings estimated at 30–40% of session context, zero directional deviations, zero rework. Small tasks and small projects benefit little; large projects and long tasks benefit clearly.
 
-## Quick Start
+## Design History
 
-1. Read [skill/SKILL.md](skill/SKILL.md). After triggering, the form (full / minimal / plain text) and view rendering are judged automatically from the task's traits and stated in one line; ask the user only when the scope is genuinely unclear. Then follow the artifact specs and workflow.
-2. Planning ends when: L0 and L1 are frozen, the ledger is in place, and the approval target (rendered view or plan.yaml) has passed review.
-3. Execution follows the downstream agent's own workflow; the dossier carries its state: dag[].status is the resume checkpoint, handoffs record outputs, deviations, and state snapshots.
-4. Review: compile review.packet.md — it contains only the request, the diff, before/after files, and acceptance criteria; the review process belongs to the reviewer.
+The spec merges two independent drafts. One is a four-layer directory form: progressive `.plan-dossier/`, one task card per node, DAG parallelism, three-section handoffs, and stable-prefix packet ordering. The other is a set of verification mechanisms: a re-read taxonomy, partitioning by staleness mode, recording by acquisition cost, trust grading, three-level staleness handling, review isolation, packet budgets, and the falsifiable prediction. The main merge decisions:
+
+| Source idea | Decision | Reason |
+|---|---|---|
+| Verbatim excerpts in an early anchor file | Replaced by ledger entries that store only locations and conclusions | Stored content goes stale silently with no way to detect it. Locations load content on demand and can be checked with region_sha. |
+| Negative knowledge in an early decisions file | One-line exclusions go in L0 `excluded` (frozen, resident); detailed pitfalls go in ledger entries with `verdict: excluded` | The design predicted exclusions would give the largest benefit (E1 > E3), so anti-regression knowledge must be frozen and resident. |
+| Early plan.md as L0 | plan.yaml is the single source; views/plan.view.md is rendered from it | One source of truth. Cites can be checked. No hand-maintained duplicate. |
+| Steps inlined in plan.yaml | Moved to L1 task cards, referenced through cites | Isolates context per executor. Removes the inconsistency where L1 copied L2. |
+| Prefix-cache ordering and packet budgets | One mechanism: packet order equals prompt assembly order | Both describe one thing: one covers order, the other covers budget and trimming. |
+| Snippet cache blobs | Left out of the spec body; see [Degradation and Runtime Support](#degradation-and-runtime-support) | The skill is a file spec. Blob storage is tooling and does nothing without runtime support. |
+| Trust grading, three-level staleness, supersedes revisions | Kept in full | Core of production-grade verifiability. |
+| Early DAG status table | Kept in L0 | The resume checkpoint. |
+| Separate ID schemes (ANC-xx, DEC-xx, L-xxxx) | Unified as ledger entries L-xxxx | One ID system instead of two. |
+
+Field testing led to seven refinements, all now part of the spec:
+
+- **Form decision.** Early versions asked the user whether to create the dossier and render the view. Now the skill judges the form automatically, states it in one line, and asks only when the scope is unclear. The minimal form does not render the view by default.
+- **Risk coverage.** L0 gains a `risks` field. `mitigated_by` anchors (`aN`, `sM.N`) point to acceptance entries, and reference checks cover the mapping from risks to tests.
+- **Single source inside the plan.** Each data list is expanded in one place across L0 and the task cards. Everywhere else it is referenced by anchor or ID.
+- **Gaps declaration.** L0 requires `gaps`, which may be empty. It lists the judgment areas the plan leaves uncovered. It is kept separate from `open_questions`, which are pending rulings. Both `gaps` and `risks` are on the never-truncate list.
+- **Replayable assertions.** `trust: checked` requires a `replay` command the planner has run. The executor replays it lazily before relying on the conclusion.
+- **Views have one reader.** plan.view.md is for the human approver only. Executor input never contains views.
+- **base.env.** Environment facts, such as build prerequisites and existing baseline failures, stay resident in L0 `base`. Changes are announced through the handoff's State Snapshot.
