@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plan-dossier/ledger.schema.json",
+  "title": "L2 ledger entry (one line of ledger.jsonl)",
+  "type": "object",
+  "required": ["id", "locator", "verdict", "intent"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^L-[0-9]+$" },
+    "locator": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "span": { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 }
+      }
+    },
+    "verdict": { "enum": ["relevant", "excluded", "unknown"] },
+    "intent": { "type": "string", "minLength": 1 },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "tool_calls": { "type": "integer", "minimum": 0 },
+        "tokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "by": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string" },
+        "run": { "type": "string" },
+        "at": { "type": "string" }
+      }
+    },
+    "supersedes": { "type": ["string", "null"] },
+    "region_sha": { "type": "string" },
+    "invalidation": { "type": "array", "items": { "type": "string" } }
+  }
+}

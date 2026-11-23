@@ -1,10 +1,10 @@
 # Plan Dossier
 
-**Language / 语言**: [English](README.md) | [中文](zh-CN/README.md)
+[English](README.md) | [中文](README.zh-CN.md)
 
 A `.plan-dossier/` artifact spec and workflow for long, cross-phase tasks: planning, execution, and review share four layers of artifacts partitioned by how they go stale — eliminating second searches and second planning during execution while keeping the review phase independent.
 
-The full skill definition lives in [SKILL.md](SKILL.md).
+The full skill definition lives in [skill/](skill) — [SKILL.md](skill/SKILL.md) plus three on-demand references under [references/](skill/references).
 
 ---
 
@@ -22,44 +22,31 @@ The fix is not a longer plan (it would be re-paid at every handoff, the projecti
 
 ## Install
 
-This skill is plain files — no runtime dependency, works in any agent harness that reads a SKILL.md.
-
-### One-line install
+This skill is plain files — no runtime dependency, works in any agent harness that reads a SKILL.md. The installable unit is the [skill/](skill) directory — `SKILL.md` plus three references it links on demand.
 
 ```bash
-# Claude Code
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
-  -o ~/.claude/skills/plan-dossier/SKILL.md --create-dirs
-
-# Codex
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
-  -o ~/.codex/skills/plan-dossier/SKILL.md --create-dirs
-
-# Qoder
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
-  -o ~/.qoder/skills/plan-dossier/SKILL.md --create-dirs
-
-# Any agent that reads ~/.agents/skills
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
-  -o ~/.agents/skills/plan-dossier/SKILL.md --create-dirs
+npx skills add Halonnnnn/plan-dossier
 ```
 
-Restart your agent session so the skill is discovered, then trigger it by asking for a plan.
+The CLI scans the repo and offers the two language variants for interactive selection — `plan-dossier` (English) and `plan-dossier-zh` (Chinese) — then maps the chosen skill into every detected agent's skill directory (Claude Code, Codex, Cursor, Qoder, `~/.agents`, and more), symlinking by default (`--copy` for real copies) and writing a `skills-lock.json` for reproducible restores. To pick a variant non-interactively: `npx skills add Halonnnnn/plan-dossier --skill plan-dossier-zh`. Restart your agent session so the skill is discovered, then trigger it by asking for a plan.
 
-### Manual install
+### Manual install (no npx)
+
+Fetch the four files — `SKILL.md` plus `references/schema.md`, `references/workflow-rules.md`, `references/checklist.md` — from `https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/skill/` into your agent's skill directory with `curl -fsSL <url> -o <dest> --create-dirs`, or clone the repo and copy the `skill/` directory over (Chinese variant: `skill-zh/`). Keep the `references/` subdirectory layout and the `name:` frontmatter. As a repo convention, you can also vendor the `skill/` directory so every agent working in the repo shares the same `.plan-dossier/` spec.
+
+The Chinese version lives at [skill-zh/SKILL.md](skill-zh/SKILL.md); installing the English one is enough — the skill produces language-neutral YAML/JSONL artifacts.
+
+### Optional: machine validation
+
+The skill runs with no tooling at all. If you want machine-checked artifacts, the repo also ships a `validate` CLI (Node.js ≥ 18, `spec/` JSON Schemas + semantic invariants):
 
 ```bash
-git clone <this-repo> /tmp/plan-dossier
-mkdir -p ~/.agents/skills/plan-dossier
-cp /tmp/plan-dossier/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
+git clone https://github.com/Halonnnnn/plan-dossier /tmp/plan-dossier
+cd /tmp/plan-dossier/cli && npm install
+node bin/plan-dossier.js validate /path/to/.plan-dossier
 ```
 
-### Other harnesses
-
-- **Other agent CLIs**: copy `SKILL.md` into the harness's skill directory (same shape as the commands above), keeping the `name:` frontmatter.
-- **As a repo convention**: commit a `SKILL.md` (or link this one) at the repo root so every agent working in the repo shares the same `.plan-dossier/` spec.
-
-The Chinese version lives at [zh-CN/SKILL.md](zh-CN/SKILL.md); installing the English `SKILL.md` is enough — the skill produces language-neutral YAML/JSONL artifacts.
+Exit code 0 with errors listed as `warn:` means the structure passed and only heuristics flagged something; exit 1 lists deterministic violations (broken cites, missing trust fields, DAG cycles, malformed ledger lines). The spec is versioned as `spec/VERSION` and currently `0-draft` — not a frozen commitment.
 
 ## How It Works
 
@@ -164,7 +151,7 @@ The spec was merged from two independent drafts: the four-layer directory form (
 | v1 plan.md (L0) | plan.yaml single source + views/plan.view.md rendering | single source of truth; cites existence is verifiable; no hand-maintained twins |
 | v2 steps inlined in plan.yaml | moved to L1 task cards + cites referencing | per-executor context isolation; fixes v1's "L1 copies L2" inconsistency |
 | v1 prefix-cache ordering + v2 packet budget | merged into one mechanism: packet ordering = prompt assembly order | two faces of one thing: v1 described the order, v2 the budget and tailoring |
-| v2 snippet cache blobs/, blob_sha | excluded from the spec body; mentioned under runtime support | the skill is a file spec; blob storage is tooling and idles without runtime support |
+| v2 snippet cache blobs/, blob_sha | excluded from the spec body; see [Degradation and Runtime Support](#degradation-and-runtime-support) | the skill is a file spec; blob storage is tooling and idles without runtime support |
 | v2 trust grading, three-level staleness, supersedes revisions | kept in full | the core of production-grade verifiability |
 | v1 DAG status table | kept in L0 | the resume checkpoint |
 | Naming schemes | ANC-xx / DEC-xx / L-xxxx unified into ledger entries L-xxxx | eliminate dual ID systems |
@@ -180,6 +167,15 @@ Field feedback drove seven refinements, now part of the spec:
 - **base.env.** Environment facts (build preconditions, pre-existing baseline failures) live resident in L0 base; staleness is announced via the handoff's State Snapshot.
 
 
+## Degradation and Runtime Support
+
+This skill is a file spec and runs with no tooling at all: the agent appends ledger entries manually per the recording criteria, an entry without region_sha is consumed by reading the target region when it is used, and verification degrades to "visual comparison + staleness process on mismatch".
+
+With runtime support (a hook or MCP tool), two things automate without changing any file format:
+
+- auto-generate ledger entries and compute region_sha on read/grep/glob calls;
+- auto-run lazy region_sha verification when a snippet loads, prompting re-fetch on staleness; content caching (hash-deduplicated blob storage) can be added further down, but that is tool-layer implementation outside this spec.
+
 ## Evaluation and the Falsifiable Prediction
 
 Report four metrics together: reuse ratio, tool calls from search to first edit, task pass rate, and erroneous-use-after-staleness rate. Any single metric misleads — voiding everything drives "staleness detection rate" to 100%.
@@ -190,7 +186,7 @@ Field results (multiple rounds, single executor, full form): net savings estimat
 
 ## Quick Start
 
-1. Read [SKILL.md](SKILL.md). After triggering, the form (full / minimal / plain text) and view rendering are judged automatically from the task's traits and stated in one line; ask the user only when the scope is genuinely unclear. Then follow the artifact specs and workflow.
+1. Read [skill/SKILL.md](skill/SKILL.md). After triggering, the form (full / minimal / plain text) and view rendering are judged automatically from the task's traits and stated in one line; ask the user only when the scope is genuinely unclear. Then follow the artifact specs and workflow.
 2. Planning ends when: L0 and L1 are frozen, the ledger is in place, and the approval target (rendered view or plan.yaml) has passed review.
 3. Execution follows the downstream agent's own workflow; the dossier carries its state: dag[].status is the resume checkpoint, handoffs record outputs, deviations, and state snapshots.
 4. Review: compile review.packet.md — it contains only the request, the diff, before/after files, and acceptance criteria; the review process belongs to the reviewer.
