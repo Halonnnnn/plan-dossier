@@ -111,6 +111,7 @@ Routed by stage and loaded on demand — this file plus the routed references co
 | Plain-text plan (nothing written to disk) | SKILL.md only | load no references/ — maximize context savings |
 | Creating a new dossier / version-bump revision | [references/schema.md](references/schema.md) + [references/workflow-rules.md](references/workflow-rules.md) | read both together, once, before writing any file |
 | Compiling a handoff packet or review.packet.md | [references/workflow-rules.md](references/workflow-rules.md) + [references/schema.md](references/schema.md) | assemble per the budget-truncation and review-isolation rules |
+| Handling a stale or superseded ledger entry | [references/workflow-rules.md](references/workflow-rules.md) | Staleness Handling defines the three staleness levels; revisions append via `supersedes` |
 | Final self-check before delivery | [references/checklist.md](references/checklist.md) | read last, after the artifacts are written; check item by item |
 
 The routing table is bounded by planning and artifact compilation; it prescribes nothing about execution-time behavior.
