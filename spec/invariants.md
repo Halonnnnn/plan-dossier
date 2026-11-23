@@ -2,7 +2,7 @@
 
 Spec version: 0-draft. JSON Schema covers structural constraints; the rules below cannot be
 expressed in a schema and are enforced by `plan-dossier validate`. Numbering matches the
-SKILL.md Verification Checklist where applicable.
+Verification Checklist in `skill/references/checklist.md` where applicable.
 
 ## Errors
 

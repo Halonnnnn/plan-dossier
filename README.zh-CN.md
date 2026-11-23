@@ -1,10 +1,10 @@
 # Plan Dossier
 
-**Language / 语言**: [English](../README.md) | [中文](README.md)
+[English](README.md) | 中文
 
 一套面向跨阶段长任务的 `.plan-dossier/` 工件规范与工作流：规划、执行、审查三个阶段共享按失效方式划分的四层工件，消除执行阶段的二次检索与二次规划，同时保持审查阶段的独立性。
 
-完整技能定义见 [SKILL.md](SKILL.md)。
+完整技能定义见 [skill-zh/SKILL.md](skill-zh/SKILL.md) 与其 [references/](skill-zh/references) 下三个按需加载的参考文件。
 
 ---
 
@@ -22,44 +22,19 @@ Planner → Executor 是多 Agent 协作与可恢复工作流的主流模式：�
 
 ## 安装
 
-本 skill 是纯文件，无运行时依赖，任何能读取 SKILL.md 的 agent 环境均可使用。
-
-### 一行安装
+本 skill 是纯文件，无运行时依赖，任何能读取 SKILL.md 的 agent 环境均可使用。安装单元是 [skill-zh/](skill-zh) 目录——`SKILL.md` 加三个按需链接的参考文件。
 
 ```bash
-# Claude Code
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
-  -o ~/.claude/skills/plan-dossier/SKILL.md --create-dirs
-
-# Codex
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
-  -o ~/.codex/skills/plan-dossier/SKILL.md --create-dirs
-
-# Qoder
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
-  -o ~/.qoder/skills/plan-dossier/SKILL.md --create-dirs
-
-# 任何读取 ~/.agents/skills 的 agent
-curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
-  -o ~/.agents/skills/plan-dossier/SKILL.md --create-dirs
+npx skills add Halonnnnn/plan-dossier
 ```
 
-重启 agent 会话以发现 skill，之后通过"要求输出计划"触发。
+CLI 会扫描仓库并交互式勾选语言变体——`plan-dossier`（英文）与 `plan-dossier-zh`（中文）——随后把选中的 skill 映射到检测到的所有 agent 的 skill 目录（Claude Code、Codex、Cursor、Qoder、`~/.agents` 等），默认软链（`--copy` 改为实体拷贝），并生成 `skills-lock.json` 供可复现恢复。非交互指定中文变体：`npx skills add Halonnnnn/plan-dossier --skill plan-dossier-zh`。重启 agent 会话以发现 skill，之后通过"要求输出计划"触发。
 
-### 手动安装
+### 手动安装（无 npx）
 
-```bash
-git clone <本仓库> /tmp/plan-dossier
-mkdir -p ~/.agents/skills/plan-dossier
-cp /tmp/plan-dossier/zh-CN/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
-```
+从 `https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/skill-zh/` 用 `curl -fsSL <url> -o <目标> --create-dirs` 逐个拉取四个文件——`SKILL.md` 与 `references/` 下三个参考文件——或 clone 本仓库后把 `skill-zh/` 目录整体拷进 agent 的 skill 目录（英文版为 `skill/`）。保持 `references/` 子目录结构与 `name:` frontmatter。作为仓库约定，也可把 skill 目录 vendor 进消费仓库，让同一仓库的 agent 共享同一份 `.plan-dossier/` 规范。
 
-### 其他环境
-
-- **其他 agent CLI**：将 `SKILL.md` 复制到对应 skill 目录（同上面命令的路径形式），保留 `name:` frontmatter。
-- **作为仓库约定**：把 `SKILL.md` 提交到仓库根目录（或链接本仓库），让同一仓库中的所有 agent 共享同一份 `.plan-dossier/` 规范。
-
-中文版位于本目录的 [SKILL.md](SKILL.md)；英文版位于根目录 `SKILL.md`。skill 产出的 YAML/JSONL 工件与语言无关，两种语言版本效果一致。
+中文版位于 [skill-zh/SKILL.md](skill-zh/SKILL.md)；英文版位于 [skill/SKILL.md](skill/SKILL.md)。skill 产出的 YAML/JSONL 工件与语言无关，两种语言版本效果一致。
 
 ### 可选：机器校验
 
@@ -176,7 +151,7 @@ planner ───────► L0 plan.yaml ──── 冻结 ────�
 | v1 plan.md（L0） | 改为 plan.yaml 单源 + views/plan.view.md 渲染 | 单一事实源，cites 引用存在性可校验，不手工维护两份 |
 | v2 steps 内联 plan.yaml | 移入 L1 任务卡 + cites 引用制 | 多执行器上下文隔离；修复 v1"L1 抄写 L2"的不一致 |
 | v1 前缀缓存拼装顺序 + v2 交接包预算 | 合并为同一机制：packet 排序规则 = prompt 拼装顺序 | 一体两面：v1 讲顺序、v2 讲预算与裁剪 |
-| v2 片段缓存 blobs/、blob_sha | 不纳入规范正文，归运行时支持一节 | skill 是文件规范，blob 存储属工具层，无运行时支持时空转 |
+| v2 片段缓存 blobs/、blob_sha | 不纳入规范正文，见[降级与运行时支持](#降级与运行时支持) | skill 是文件规范，blob 存储属工具层，无运行时支持时空转 |
 | v2 信任分级、三级失效、supersedes 修订 | 全部保留 | 生产级可校验性的核心 |
 | v1 DAG 状态表 | 保留在 L0 | 断点续传入口 |
 | 命名体系 | ANC-xx / DEC-xx / L-xxxx 统一为账本条目 L-xxxx | 消除两套 ID 体系 |
@@ -192,6 +167,15 @@ planner ───────► L0 plan.yaml ──── 冻结 ────�
 - **base.env。** 环境事实（构建前置、基线既有失败）进 L0 base 常驻，过期经 handoff State Snapshot 告知。
 
 
+## 降级与运行时支持
+
+本 skill 是文件规范，无任何工具支持即可运行：账本由 agent 按记录标准手动追加；无 region_sha 的条目在使用时读取目标片段；校验退化为"目视比对 + 不符即走失效流程"。
+
+有运行时支持（hook 或 MCP 工具）时可自动化两件事，均不改变文件格式：
+
+- 在 read、grep、glob 调用时自动生成账本条目并计算 region_sha；
+- 片段加载时自动做 region_sha 惰性校验，失效时提示重新获取；进一步可加内容缓存（按哈希去重的 blob 存储），属于工具层实现，不在本规范内。
+
 ## 评测与可证伪预测
 
 评估同时报告四项：重复获取比例、搜索到首次编辑的工具调用次数、任务通过率、失效后的错误使用率。单看任何一项都会被误导——全部作废也能让"失效识别率"达到 100%。
@@ -202,7 +186,7 @@ planner ───────► L0 plan.yaml ──── 冻结 ────�
 
 ## 快速上手
 
-1. 读 [SKILL.md](SKILL.md)。触发后按任务特征自动判定工件形态（完整 / 最简 / 纯文本）与是否渲染视图，并用一句话说明判定理由；仅在范围确实不明确时向用户提问，再按工件规范与工作流执行。
+1. 读 [skill-zh/SKILL.md](skill-zh/SKILL.md)。触发后按任务特征自动判定工件形态（完整 / 最简 / 纯文本）与是否渲染视图，并用一句话说明判定理由；仅在范围确实不明确时向用户提问，再按工件规范与工作流执行。
 2. 规划阶段结束的标志：L0、L1 冻结，账本就位，审批对象（渲染视图或 plan.yaml）通过审批。
 3. 执行按下游 agent 自己的工作流进行；dossier 承载其状态：dag[].status 是断点续传入口，handoff 记录产出、偏离与状态快照。
 4. 审查阶段：编译 review.packet.md——只含原始需求、diff、变更文件前后全文与验收标准；审查流程由审查方自行决定。
