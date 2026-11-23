@@ -1,0 +1,44 @@
+task_id: refactor-payment
+version: 1
+base: {repo: "acme/api", commit: "abc123", env: ["source env.local.sh before running tests", "baseline build has 1 pre-existing failure unrelated to this task"]}
+objective: "Consolidate all payment validation into PaymentValidator"
+
+constraints:
+  - id: c1
+    text: "Do not modify the billing layer's structure"
+    why: "Upstream routes by layer; changing layers breaks A/B traffic splitting"
+    trust: unverified
+    by: {model: "planner-a", run: "r17", at: "2026-11-19T10:00:00+08:00"}
+    rederive_cost: high
+  - id: c2
+    text: "PaymentService.validate's public signature must not change"
+    trust: checked
+    assertion: {replay: "grep -rn 'def validate' src/payment/", expects: "exactly one match, in PaymentService"}
+
+acceptance:
+  - "Every order path goes through PaymentValidator"
+  - "All existing payment tests pass"
+
+dag:
+  - {id: s1, task: "tasks/01_extract_validator.yaml", depends_on: [], status: pending}
+  - {id: s2, task: "tasks/02_replace_callers.yaml", depends_on: [s1], status: pending}
+
+risks:
+  - {id: r1, text: "After consolidation, RefundService bypasses validation", mitigated_by: ["s2.1"]}
+
+decisions:
+  - id: d1
+    text: "Composition over inheritance"
+    why: "Avoids constructor parameter sprawl in PaymentService"
+    trust: unverified
+    by: {model: "planner-a", run: "r17", at: "2026-11-19T10:05:00+08:00"}
+
+gaps:
+  - "Boundary branches for zero-amount inputs were not derived case by case"
+
+open_questions:
+  - "Does the refund path also count as a validation entry point (unconfirmed)"
+
+excluded:
+  - {locator: "src/billing.py", reason: "payment validation is not in the billing layer"}
+  - {locator: "src/legacy/**", reason: "deprecated, not part of the call chain"}

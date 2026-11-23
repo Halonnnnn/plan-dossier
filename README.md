@@ -61,6 +61,18 @@ cp /tmp/plan-dossier/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
 
 The Chinese version lives at [zh-CN/SKILL.md](zh-CN/SKILL.md); installing the English `SKILL.md` is enough — the skill produces language-neutral YAML/JSONL artifacts.
 
+### Optional: machine validation
+
+The skill runs with no tooling at all. If you want machine-checked artifacts, the repo also ships a `validate` CLI (Node.js ≥ 18, `spec/` JSON Schemas + semantic invariants):
+
+```bash
+git clone https://github.com/Halonnnnn/plan-dossier /tmp/plan-dossier
+cd /tmp/plan-dossier/cli && npm install
+node bin/plan-dossier.js validate /path/to/.plan-dossier
+```
+
+Exit code 0 with errors listed as `warn:` means the structure passed and only heuristics flagged something; exit 1 lists deterministic violations (broken cites, missing trust fields, DAG cycles, malformed ledger lines). The spec is versioned as `spec/VERSION` and currently `0-draft` — not a frozen commitment.
+
 ## How It Works
 
 One pass through the workflow, and which artifacts each phase reads and writes:

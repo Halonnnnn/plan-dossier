@@ -1,0 +1,7 @@
+id: s2
+action: "Replace all validation call sites with PaymentValidator"
+depends_on: [s1]
+cites: ["L-0042"]
+outputs: ["src/payment/service.py"]
+acceptance:
+  - "No caller invokes inline validation logic"

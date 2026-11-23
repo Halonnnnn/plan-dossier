@@ -61,6 +61,18 @@ cp /tmp/plan-dossier/zh-CN/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
 
 中文版位于本目录的 [SKILL.md](SKILL.md)；英文版位于根目录 `SKILL.md`。skill 产出的 YAML/JSONL 工件与语言无关，两种语言版本效果一致。
 
+### 可选：机器校验
+
+skill 本身零工具依赖。如需机器校验工件，仓库附带 `validate` CLI（Node.js ≥ 18，`spec/` JSON Schema + 语义不变量）：
+
+```bash
+git clone https://github.com/Halonnnnn/plan-dossier /tmp/plan-dossier
+cd /tmp/plan-dossier/cli && npm install
+node bin/plan-dossier.js validate /path/to/.plan-dossier
+```
+
+退出码 0 且只有 `warn:` 表示结构通过、仅启发式提示（token 预算、review 隔离等）；退出码 1 列出确定性违规（cites 断裂、trust 字段缺失、DAG 环、ledger 行非法）。规范版本见 `spec/VERSION`，当前为 `0-draft`——不是冻结承诺。
+
 ## 工作原理
 
 一轮完整工作流，以及各阶段读写哪些工件：

@@ -1,0 +1,7 @@
+id: s1
+action: "Extract validation logic into a new module"
+depends_on: []
+cites: ["L-0042", "L-9999"]
+outputs: ["src/payment/validator.py"]
+acceptance:
+  - "PaymentValidator covers all 5 validation rules"
