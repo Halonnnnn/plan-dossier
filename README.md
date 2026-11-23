@@ -24,6 +24,28 @@ The fix is not a longer plan (it would be re-paid at every handoff, the projecti
 
 This skill is plain files — no runtime dependency, works in any agent harness that reads a SKILL.md.
 
+### One-line install
+
+```bash
+# Claude Code
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
+  -o ~/.claude/skills/plan-dossier/SKILL.md --create-dirs
+
+# Codex
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
+  -o ~/.codex/skills/plan-dossier/SKILL.md --create-dirs
+
+# Qoder
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
+  -o ~/.qoder/skills/plan-dossier/SKILL.md --create-dirs
+
+# Any agent that reads ~/.agents/skills
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/SKILL.md \
+  -o ~/.agents/skills/plan-dossier/SKILL.md --create-dirs
+```
+
+Restart your agent session so the skill is discovered, then trigger it by asking for a plan.
+
 ### Manual install
 
 ```bash
@@ -32,11 +54,9 @@ mkdir -p ~/.agents/skills/plan-dossier
 cp /tmp/plan-dossier/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
 ```
 
-Restart your agent session so the skill is discovered, then trigger it by asking for a plan.
-
 ### Other harnesses
 
-- **Claude Code / other agent CLIs**: copy `SKILL.md` into the harness's skill directory (e.g. `~/.claude/skills/plan-dossier/`), keeping the `name:` frontmatter.
+- **Other agent CLIs**: copy `SKILL.md` into the harness's skill directory (same shape as the commands above), keeping the `name:` frontmatter.
 - **As a repo convention**: commit a `SKILL.md` (or link this one) at the repo root so every agent working in the repo shares the same `.plan-dossier/` spec.
 
 The Chinese version lives at [zh-CN/SKILL.md](zh-CN/SKILL.md); installing the English `SKILL.md` is enough — the skill produces language-neutral YAML/JSONL artifacts.

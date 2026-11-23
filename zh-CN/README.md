@@ -24,6 +24,28 @@ Planner → Executor 是多 Agent 协作与可恢复工作流的主流模式：�
 
 本 skill 是纯文件，无运行时依赖，任何能读取 SKILL.md 的 agent 环境均可使用。
 
+### 一行安装
+
+```bash
+# Claude Code
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
+  -o ~/.claude/skills/plan-dossier/SKILL.md --create-dirs
+
+# Codex
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
+  -o ~/.codex/skills/plan-dossier/SKILL.md --create-dirs
+
+# Qoder
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
+  -o ~/.qoder/skills/plan-dossier/SKILL.md --create-dirs
+
+# 任何读取 ~/.agents/skills 的 agent
+curl -fsSL https://raw.githubusercontent.com/Halonnnnn/plan-dossier/main/zh-CN/SKILL.md \
+  -o ~/.agents/skills/plan-dossier/SKILL.md --create-dirs
+```
+
+重启 agent 会话以发现 skill，之后通过"要求输出计划"触发。
+
 ### 手动安装
 
 ```bash
@@ -32,11 +54,9 @@ mkdir -p ~/.agents/skills/plan-dossier
 cp /tmp/plan-dossier/zh-CN/SKILL.md ~/.agents/skills/plan-dossier/SKILL.md
 ```
 
-重启 agent 会话以发现 skill，之后通过"要求输出计划"触发。
-
 ### 其他环境
 
-- **Claude Code 及其他 agent CLI**：将 `SKILL.md` 复制到对应 skill 目录（如 `~/.claude/skills/plan-dossier/`），保留 `name:` frontmatter。
+- **其他 agent CLI**：将 `SKILL.md` 复制到对应 skill 目录（同上面命令的路径形式），保留 `name:` frontmatter。
 - **作为仓库约定**：把 `SKILL.md` 提交到仓库根目录（或链接本仓库），让同一仓库中的所有 agent 共享同一份 `.plan-dossier/` 规范。
 
 中文版位于本目录的 [SKILL.md](SKILL.md)；英文版位于根目录 `SKILL.md`。skill 产出的 YAML/JSONL 工件与语言无关，两种语言版本效果一致。
