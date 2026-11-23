@@ -18,7 +18,7 @@ Verification Checklist in `skill/references/checklist.md` where applicable.
    of L0 `acceptance`, `sM.N` to the Nth `acceptance` entry of task card `sM`.
 7. **Trust grading**: `trust: checked` entries carry `assertion.replay`; `trust: unverified`
    entries carry `by`, and constraints additionally carry `rederive_cost` (decisions omit it —
-   the SKILL.md L0 example does).
+   the L0 example in `skill/references/schema.md` does).
 
 ## Warns (heuristics, never blocking)
 

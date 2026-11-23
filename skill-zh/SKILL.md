@@ -110,6 +110,7 @@ resume 是可选项：工件提供断点，不保证下游维护。删除执行�
 | 纯文本计划（无需落盘） | 仅 SKILL.md | 不加载任何 references/，最大化节省上下文 |
 | 创建新 Dossier / 升版本修订 | [references/schema.md](references/schema.md) + [references/workflow-rules.md](references/workflow-rules.md) | 进入落盘前一次性同时读取两份文件 |
 | 编译交接 Packet 或 review.packet.md | [references/workflow-rules.md](references/workflow-rules.md) + [references/schema.md](references/schema.md) | 按预算截断与审查隔离规则组装 |
+| 处理失效 / 被 supersede 的账本条目 | [references/workflow-rules.md](references/workflow-rules.md) | 失效处理节定义三级失效；修订按 `supersedes` 追加 |
 | 规划交付前最终自检 | [references/checklist.md](references/checklist.md) | 延迟到工件编写完成后的最后一步读取，逐条核对 |
 
 路由表限定在规划与工件编译边界内，不规定执行期行为。

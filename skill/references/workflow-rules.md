@@ -14,7 +14,7 @@ Phase workflows (planning, handoff assembly, execution, review), freeze and vers
 
 - After freezing, L0's bytes never change. To change the plan, bump `version` and archive the old file as `plan.v1.yaml`. Byte stability of the frozen part makes prefix caching hit long-term.
 - Task cards freeze together with L0. A step that proves wrong during execution is a plan deviation: it is recorded in the handoff's Deviations and resolved through a version bump — never edit the card in place.
-- `dag[].status` is the resume checkpoint — execution state lives in this field, not in prose. Updating it is the downstream agent's call, and an update is not a plan modification (no version bump). The value set is defined in [schema.md](schema.md).
+- `dag[].status` is the resume checkpoint — execution state lives in this field, not in prose. Updating it is the downstream agent's call, and an update is not a plan modification (no version bump). The value set is defined in [schema.md](schema.md). The five values: `pending` — not started; `in_progress` — an executor is working the node; `done` — finished, with its handoff written; `blocked` — cannot proceed; `needs_review` — the result was produced under an earlier plan version (see the next bullet).
 - `needs_review` is written by the planner during a version bump to mark nodes whose results were produced under an earlier plan version. It adds no new executor rule: per existing DAG semantics, anything not `done` already leaves dependents unsatisfied, and recovery goes through the normal version-bump re-approval flow (the planner rewrites and re-freezes). Nodes the change does not affect keep their status; nothing rolls back automatically.
 
 ## Handoff (packet assembly)
