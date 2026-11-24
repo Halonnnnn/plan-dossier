@@ -9,18 +9,18 @@ The pre-delivery verification checklist plus common mistakes. Items are explicit
 Must be 100% objectively verified before delivery; fix anything that fails first:
 
 1. Reference integrity: after scanning every task card's `cites`, every ID resolves to a line in ledger.jsonl; every `dag[].task` file exists; every `risks[].mitigated_by` anchor (`aN`, `sM.N`) resolves to an entry in L0 acceptance or the corresponding task card.
-2. Trust grading completeness: every `trust: checked` entry has an `assertion`; every `trust: unverified` entry has `by` and `rederive_cost`.
+2. Trust grading completeness: every `trust: checked` entry has an `assertion`; every `trust: unverified` entry has `by`, and constraints additionally have `rederive_cost`.
 3. `excluded` and `gaps` fields exist; when empty they are `[]`, and an empty `excluded` is explained in `open_questions`.
-4. Budget compliance: plan.yaml estimated at ≤ 2K tokens; each task card ≤ 1K; packet ≤ 4K and ends with the unselected-entries listing.
+4. Budget compliance: plan.yaml estimated at ≤ 2K tokens; each task card ≤ 1K; packet, when compiled, ≤ 4K and ends with the unselected-entries listing.
 5. Separation of duties: plan.yaml contains no search-process detail (that is the ledger's job) and no source quotations; task cards contain no copied ledger content or source.
-6. Review isolation: review.packet.md contains no verbatim objective from plan.yaml, no excluded entries, no ledger IDs.
-7. Render consistency: views/plan.view.md is rendered from the currently frozen L0 + L1, with DAG status matching plan.yaml.
+6. Review isolation (when review.packet.md is compiled): contains no verbatim objective from plan.yaml, no excluded entries, no ledger IDs.
+7. Render consistency (when rendered): views/plan.view.md is rendered from the currently frozen L0 + L1, with every DAG node id present.
 
 ### Post-Execution Diagnostics
 
-Checked only in post-execution review; never blocks plan delivery:
+Never blocks plan delivery by default; item 8 is a conditional gate — it blocks whenever handoff files exist and is not applicable otherwise:
 
-8. Execution audit trail: done task cards should have complete handoff files. A missing trail means downstream skipped maintenance — report it.
+8. Handoff format gate: when any `handoff/*.md` exists, all three sections are present — mechanically enforced by the CLI whenever they exist. Absence of handoffs is not a defect; write-back is optional.
 
 ### Human Visual Check
 

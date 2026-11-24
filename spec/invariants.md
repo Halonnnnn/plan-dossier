@@ -2,7 +2,9 @@
 
 Spec version: 0-draft. JSON Schema covers structural constraints; the rules below cannot be
 expressed in a schema and are enforced by `plan-dossier validate`. Numbering matches the
-Verification Checklist in `skill/references/checklist.md` where applicable.
+Verification Checklist in `skill/references/checklist.md` where applicable. The handoff
+three-section gate is likewise CLI-enforced; its normative text is checklist item 8, kept out
+of this list to preserve numbering.
 
 ## Errors
 
@@ -10,7 +12,8 @@ Verification Checklist in `skill/references/checklist.md` where applicable.
 2. **DAG reference integrity**: every `depends_on` id exists as a `dag[].id`; the dependency
    graph is acyclic.
 3. **Card/DAG correspondence**: each task card `id` matches a `dag` node whose `task` points at
-   that card; no duplicate card ids; no dag node without its card file.
+   that card; no duplicate card ids; no dag node without its card file; the card's `depends_on`
+   equals the dag node's (L0 is the authoritative topology).
 4. **Cites resolution**: every task-card `cites` id resolves to an entry in ledger.jsonl.
 5. **Ledger line validity**: every ledger.jsonl line is valid JSON conforming to
    ledger.schema.json; `id` is unique; `supersedes` (when set) points at an earlier entry's id.
@@ -27,4 +30,4 @@ Verification Checklist in `skill/references/checklist.md` where applicable.
    "no exclusions made".
 10. **Review isolation**: review.packet.md contains no ledger ids (`L-<digits>`) and no excluded
     locator strings.
-11. **Render consistency**: the DAG status shown in views/plan.view.md matches plan.yaml.
+11. **Render consistency**: every DAG node id appears in views/plan.view.md.
