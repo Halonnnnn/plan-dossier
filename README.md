@@ -52,7 +52,7 @@ The spec is versioned in `spec/VERSION` and is currently `0-draft`, so it is not
 
 1. Read [skill/SKILL.md](skill/SKILL.md). After triggering, the skill picks a form (full, minimal, or plain text) and decides whether to render the view. It states the choice in one line and asks only when the scope is unclear.
 2. Planning is done when L0 and L1 are frozen, the ledger is in place, and the approval target (the rendered view or plan.yaml) has passed review.
-3. Execution follows the downstream agent's own workflow. The dossier holds the state: `dag[].status` is the resume checkpoint, and handoffs record outputs, deviations, and state snapshots.
+3. Execution follows the downstream agent's own workflow, which also owns progress and resume. L0 and L1 stay read-only during execution; handoffs (and optional ledger revisions) are the recommended write-back inside the dossier, recording outputs, deviations, and stale-entry notices.
 4. For review, compile `review.packet.md`. It contains only the request, the diff, the before and after files, and the acceptance criteria. The review process is up to the reviewer.
 
 ## The Problem
@@ -71,16 +71,16 @@ A longer plan does not fix this. Every handoff pays for it again, it stays lossy
 
 One pass through the workflow, with the artifacts each phase reads and writes:
 
-![Workflow overview: the planner writes L0, L1, and the ledger; each executor reads its packet and writes status plus handoff; review sees only the compiled packet](assets/workflow-en.jpeg)
+![Workflow overview: the planner writes L0, L1, and the ledger; each executor reads its packet and may optionally write handoffs and ledger revisions; review sees only the compiled packet](assets/workflow-en.jpeg)
 
-- **L0 and L1 freeze at approval.** Frozen bytes stay stable, so they hit the prompt prefix cache across handoffs and model switches. Changes go through a version bump, and the old file is archived. `dag[].status` write-back is the only runtime change, and it is the resume checkpoint.
+- **L0 and L1 freeze at approval.** Frozen bytes stay stable, so they hit the prompt prefix cache across handoffs and model switches. Changes go through a version bump, and the old file is archived. Nothing writes to L0/L1 at runtime — the frozen prefix is fully immutable. On a version bump, the planner marks spec-inherited nodes with `carryover`.
 - **The L2 ledger is append-only.** Each entry stores a location and a conclusion, never source content. It also stores cost and `verdict: relevant | excluded | unknown`. A revision appends a new line with `supersedes`. `region_sha` keeps the check cheap when a snippet loads.
 - **L3 handoffs have three required sections:** Actual Outputs, Deviations, and State Snapshot. A new session resumes from real output paths and known stale entries, not from checkboxes.
 - **Packets are tailored per role and capped at 4K tokens.** Stable content goes first (plan.yaml, the ledger index) to protect the prefix cache. On overflow, the ledger index is truncated first. `excluded`, `constraints`, `risks`, and `gaps` are never truncated.
 - **Reviewers see only the request, the diff, and the full before and after files.** Earlier conclusions are where errors are most likely, so the reviewer never sees them.
 - **Trust is replayable, not asserted.** Each `trust: checked` fact has an `assertion.replay`, a command the planner actually ran. Any consumer can re-check the conclusion for the cost of one command.
 - **Exclusions and risks are explicit.** `excluded` lists what was ruled out and why, and it stays frozen and resident. `risks` maps each risk to the acceptance entry that mitigates it through `mitigated_by`. `gaps` lists the judgment calls the plan leaves to the executor.
-- **The skill covers planning only.** It writes the artifacts and defines what they mean. Execution, verification, recovery, and review belong to the downstream agents. Resume is opt-in: the checkpoint exists, and whether to maintain it is the downstream agent's call.
+- **The skill covers planning only.** It writes the artifacts and defines what they mean. Execution, verification, recovery, and review belong to the downstream agents — including progress and resume, which never enter the dossier. Write-back (handoffs, ledger revisions) is recommended but never required; the formats and semantics are defined for those who opt in.
 
 ## Architecture
 
@@ -102,11 +102,11 @@ Each layer is bound to one staleness mode, which sets its change rules and verif
 
 | Layer | Artifact | Readers | Change rule | Verification |
 |---|---|---|---|---|
-| L0 | plan.yaml | all roles, resident | frozen; changes bump version and archive | human judgment + schema check |
+| L0 | plan.yaml | planning/execution, resident | frozen; changes bump version and archive | human judgment + schema check |
 | L1 | tasks/*.yaml | only the owning executor | frozen with L0 | cites reference existence check |
 | L2 | ledger.jsonl | planner/executor, on demand | append-only; revisions via supersedes | lazy region_sha comparison (optional) |
-| L3 | handoff/*.md | downstream executor | appended after each step | latest file wins |
-| views | *.md | humans/reviewers | rebuildable anytime | derived; no verification needed |
+| L3 | handoff/*.md | downstream executor | executor opt-in write-back (recommended) | three-section check when present |
+| views | *.md | humans/reviewers | rebuildable anytime | derived; consistency and isolation checked when rendered |
 
 Role visibility at handoff:
 
@@ -173,7 +173,7 @@ The spec merges two independent drafts. One is a four-layer directory form: prog
 | Prefix-cache ordering and packet budgets | One mechanism: packet order equals prompt assembly order | Both describe one thing: one covers order, the other covers budget and trimming. |
 | Snippet cache blobs | Left out of the spec body; see [Degradation and Runtime Support](#degradation-and-runtime-support) | The skill is a file spec. Blob storage is tooling and does nothing without runtime support. |
 | Trust grading, three-level staleness, supersedes revisions | Kept in full | Core of production-grade verifiability. |
-| Early DAG status table | Kept in L0 | The resume checkpoint. |
+| Early per-node execution-status field | Removed | Progress belongs to the downstream agent; the frozen file stays byte-stable. Spec inheritance across version bumps is carried by a carryover mark instead. |
 | Separate ID schemes (ANC-xx, DEC-xx, L-xxxx) | Unified as ledger entries L-xxxx | One ID system instead of two. |
 
 Field testing led to seven refinements, all now part of the spec:

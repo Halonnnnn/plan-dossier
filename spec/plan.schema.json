@@ -48,13 +48,13 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "task", "depends_on", "status"],
+        "required": ["id", "task", "depends_on"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^s[0-9]+$" },
           "task": { "type": "string" },
           "depends_on": { "type": "array", "items": { "type": "string" } },
-          "status": { "enum": ["pending", "in_progress", "done", "blocked", "needs_review"] }
+          "carryover": { "type": "boolean" }
         }
       }
     },

@@ -27,8 +27,8 @@ acceptance:
   - "现有 payment 测试全绿"
 
 dag:
-  - {id: s1, task: "tasks/01_extract_validator.yaml", depends_on: [], status: pending}
-  - {id: s2, task: "tasks/02_replace_callers.yaml", depends_on: [s1], status: pending}
+  - {id: s1, task: "tasks/01_extract_validator.yaml", depends_on: []}
+  - {id: s2, task: "tasks/02_replace_callers.yaml", depends_on: [s1]}
 
 risks:
   - {id: r1, text: "校验收敛后 RefundService 旁路绕过校验", mitigated_by: ["s2.1"]}
@@ -43,12 +43,12 @@ decisions:
 gaps:  # 计划明确未覆盖的判断维度，执行方在这些维度自行判断
   - "金额为零的边界输入分支未逐用例推导"
 
-open_questions:
-  - "退款路径是否也算校验入口（未确认）"
-
 excluded:
   - {locator: "src/billing.py", reason: "支付校验不在 billing 层"}
   - {locator: "src/legacy/**", reason: "已废弃，不参与调用链"}
+
+open_questions:
+  - "退款路径是否也算校验入口（未确认）"
 ```
 
 编写规则：
@@ -57,11 +57,18 @@ excluded:
 - `excluded` 与 `gaps` 在计划冻结时必须存在，可为 `[]`，不得省略字段。`excluded` 为空时在 `open_questions` 注明"未做排除"；`gaps` 是规划方对"哪些判断维度明确没做"的显式回答，空列表表示已知维度均已覆盖。
 - `gaps` 与 `open_questions` 语义不同：gaps 是已知未覆盖、无需回答的维度；open_questions 是待回答、待裁决的问题。两者不得混放。
 - `risks[].mitigated_by` 非空，锚点格式：`aN` 指向 L0 acceptance 第 N 条，`sM.N` 指向任务卡 M 的 acceptance 第 N 条。给不出锚点的风险不是"已设防"，降级写进 `open_questions` 并注明。
-- `base.env` 记录执行方不带上就会浪费试错的环境事实（构建前置命令、基线既有失败等），与 commit 同属任务基线。ledger 的 locator 是 path+span，装不下环境事实，且账本目录在 packet 中可被截断，所以放 base 常驻。条目过期（如基线被修复）时，变化经 handoff 的 State Snapshot 传递，不改冻结的 L0。
-- `dag[].status` 只取 `pending`、`in_progress`、`done`、`blocked`、`needs_review` 五值。语义、更新归属与 `needs_review` 规则见 [workflow-rules.md](workflow-rules.md)。
-- `trust: checked` 必须带 `assertion`，`replay` 是一条可原样执行的命令或明确的符号查找，规划方标注 checked 前必须实际执行过一次，未执行过只能标 unverified；`trust: unverified` 必须带 `by`（来源）和 `rederive_cost`（low/medium/high），使用前交叉核对。
+- `base.env` 记录执行方不带上就会浪费试错的环境事实（构建前置命令、基线既有失败等），与 commit 同属任务基线。ledger 的 locator 是 path+span，装不下环境事实，且账本目录在 packet 中可被截断，所以放 base 常驻。条目过期（如基线被修复）时，变化在回写 handoff 的情况下经 State Snapshot 传递，不改冻结的 L0。
+- `dag[].carryover` 是可选布尔字段，仅由规划方在升版本时写入：该节点规格相对上一版本无实质变更。省略或 `false` 表示节点是新增或重写的。完整标记标准见 [workflow-rules.md](workflow-rules.md)。升到 version 2 时形如：
+
+  ```yaml
+  # version: 2 —— s1 已重写，s2 规格原样继承
+  dag:
+    - {id: s1, task: "tasks/01_extract_validator.yaml", depends_on: []}
+    - {id: s2, task: "tasks/02_replace_callers.yaml", depends_on: [s1], carryover: true}
+  ```
+- `trust: checked` 必须带 `assertion`，`replay` 是一条可原样执行的命令或明确的符号查找，规划方标注 checked 前必须实际执行过一次，未执行过只能标 unverified；`trust: unverified` 必须带 `by`（来源），constraints 还须带 `rederive_cost`（low/medium/high，decisions 免——判断类结论无重推导成本），使用前交叉核对。
 - 防回退的一行式排除项放 `excluded`；详细踩坑过程放 ledger（`verdict: excluded` 的条目）。L0 不承载长篇记录。
-- `excluded` 是计划的范围约束：对排除项的修改构成计划失效事件。事件可记录（Deviations）、影响可评估（触及哪些决策与任务）；需要修订时走升版本。局部失效不自动作废计划的其余部分。下游如何响应该事件是它自己的工作流。
+- `excluded` 是计划的范围约束：对排除项的修改构成计划失效事件，局部失效不自动作废计划的其余部分。事件的检测、记录与修订流程见 [workflow-rules.md](workflow-rules.md)。
 
 ## L1 任务卡
 
@@ -77,7 +84,7 @@ acceptance:
 
 编写规则：
 
-- 一张卡一个 DAG 节点，文件名 `NN_动作简名.yaml`，NN 与 `dag[].id` 的序号一致。
+- 一张卡一个 DAG 节点，文件名 `NN_动作简名.yaml`，NN 与 `dag[].id` 的序号一致。L0 的 dag 是权威拓扑；卡内 `depends_on` 是单卡自包含副本，必须与 L0 一致。
 - 单卡控制在 1K tokens 以内。超出说明卡内混入了其他节点的内容或账本细节。
 - `cites` 只引用 ledger.jsonl 中已存在的条目 ID，不复制条目内容，更不抄源码原文。执行方凭 ID 去账本查定位，再按定位读源码。
 - `acceptance` 是本节点的可验证断言，与 L0 的全局验收互补，不得为空。
@@ -110,7 +117,7 @@ acceptance:
 
 ## L3 handoff/NN_to_MM.md
 
-单份 handoff 的文件结构；何时写入与"三段齐全才合法"的契约见 [workflow-rules.md](workflow-rules.md)。三段为：
+单份 handoff 的文件结构；是否写入与何时写入（执行方可选、推荐）以及"三段齐全才合法"的契约见 [workflow-rules.md](workflow-rules.md)。三段为：
 
 ```markdown
 # s1 → s2
@@ -132,6 +139,6 @@ acceptance:
 
 ## views/（编译产物）
 
-- `plan.view.md`：由 plan.yaml + tasks/ 渲染的人类审阅视图，包含目标、约束、DAG 表、每卡摘要、排除项。交付用户审批时给这份，不给裸 YAML。
+- `plan.view.md`：由 plan.yaml + tasks/ 渲染的人类审阅视图，包含目标、约束、DAG 表（静态拓扑与 carryover 标记，不含执行状态）、每卡摘要、排除项。交付用户审批时给这份，不给裸 YAML。
 - `review.packet.md`：审查隔离视图，内容只有四项——原始需求、变更差异、变更文件修改前后的完整内容、验收标准。由交接时编译生成，不手工编辑，不包含 plan.yaml、任务卡、excluded、账本、handoff。
 - views/ 整个目录可删除可重建，冲突时以 L0-L3 为准。

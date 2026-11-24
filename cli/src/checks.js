@@ -89,8 +89,13 @@ function runChecks(d, validatePlan, validateTask, validateEntry, errors, warns) 
     const found = cardById.get(node.id);
     if (!found) {
       errors.push(`dag ${node.id}: no task card found`);
-    } else if (found.file !== node.task && path.join(abs, found.file) !== path.join(abs, node.task)) {
-      errors.push(`dag ${node.id}: card ${found.file} does not match task path ${node.task}`);
+    } else {
+      if (found.file !== node.task && path.join(abs, found.file) !== path.join(abs, node.task)) {
+        errors.push(`dag ${node.id}: card ${found.file} does not match task path ${node.task}`);
+      }
+      const cardDeps = JSON.stringify([...(found.card.depends_on || [])].sort());
+      const dagDeps = JSON.stringify([...(node.depends_on || [])].sort());
+      if (cardDeps !== dagDeps) errors.push(`dag ${node.id}: depends_on differs between L0 and task card`);
     }
   }
   for (const id of cardById.keys()) {
@@ -124,7 +129,7 @@ function runChecks(d, validatePlan, validateTask, validateEntry, errors, warns) 
   }
 
   // --- Trust grading (error 7) ---
-  // Constraints: unverified requires by + rederive_cost (SKILL.md:143).
+  // Constraints: unverified requires by + rederive_cost (references/schema.md trust rules).
   // Decisions: unverified requires by only — the SKILL.md L0 example omits rederive_cost there.
   for (const [list, isDecision] of [[plan.constraints || [], false], [plan.decisions || [], true]]) {
     for (const item of list) {
@@ -163,11 +168,22 @@ function runChecks(d, validatePlan, validateTask, validateEntry, errors, warns) 
   if (view) {
     for (const node of plan.dag || []) {
       const re = new RegExp(`\\|\\s*${node.id}\\s*\\|`);
-      const line = view.split('\n').find((l) => re.test(l));
-      if (!line) {
+      if (!view.split('\n').some((l) => re.test(l))) {
         warns.push(`plan.view.md: dag node ${node.id} not shown`);
-      } else if (!line.includes(node.status)) {
-        warns.push(`plan.view.md: ${node.id} status "${node.status}" not reflected (line: "${line.trim().slice(0, 80)}")`);
+      }
+    }
+  }
+
+  // --- Handoff section contract (checklist item 8 gate) ---
+  const handoffDir = path.join(abs, 'handoff');
+  if (fs.existsSync(handoffDir) && fs.statSync(handoffDir).isDirectory()) {
+    const sections = ['Actual Outputs', 'Deviations', 'State Snapshot'];
+    const files = fs.readdirSync(handoffDir).filter((f) => f.endsWith('.md')).sort();
+    for (const name of files) {
+      const raw = fs.readFileSync(path.join(handoffDir, name), 'utf8');
+      const missing = sections.filter((s) => !new RegExp(`^## ${s}[ \\t\\r]*$`, 'm').test(raw));
+      if (missing.length) {
+        errors.push(`handoff/${name}: missing section(s) ${missing.map((s) => `"## ${s}"`).join(', ')}`);
       }
     }
   }

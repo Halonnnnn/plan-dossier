@@ -10,31 +10,31 @@ Turn planning-phase investment into four layers of artifacts partitioned by how 
 
 ## Scope and Responsibility
 
-Plan Dossier is a planning and artifact-authoring skill, not an execution orchestration framework. It produces complete, accurate, consistent, handoff-ready planning artifacts; downstream agents consume them through their own workflows.
+Plan Dossier is a planning and artifact-authoring skill, not an execution orchestration framework. It produces complete, accurate, consistent, handoff-ready planning artifacts; executors and reviewers consume them through their own workflows.
 
 It defines:
 
 - Planning methodology and artifact structure (L0–L3, views, packets).
-- The semantics and relationships of planning data: task states and dependencies, exclusions, trust, staleness, supersession.
+- The semantics and relationships of planning data: task dependencies, exclusions, trust, staleness, supersession.
 - Task decomposition, constraints, and acceptance criteria.
 - Content and quality requirements of what it hands off: a handoff lacking its three sections is not a valid handoff; a review packet lacking its four items is not a valid review packet.
 
 It does not prescribe:
 
-- How downstream agents execute tasks and respond to deviations or failures: tool order, editing procedure, sequencing.
+- How executors execute tasks and respond to deviations or failures: tool order, editing procedure, sequencing.
 - How artifacts are consumed: read order, verification timing, recovery procedure.
 - Reviewer behavior or review procedures.
 
 For artifacts written during execution, the responsibility split:
 
-| Artifact | Plan Dossier defines | Downstream agent decides |
+| Artifact | Plan Dossier defines | The executor decides |
 |---|---|---|
-| `dag[].status` | state meanings; the resume-checkpoint semantics | whether and when to update |
-| handoff/*.md | section structure and field semantics | when to generate and write |
+| handoff/*.md | section structure and field semantics | whether and when to write |
 | Deviations | what a deviation record means and contains | what actually gets recorded |
 | State Snapshot | what the snapshot must express | when to update and consume |
+| ledger additions | the supersedes revision format | whether and when to record |
 
-Resume is opt-in: the artifacts provide the checkpoint; nothing guarantees downstream maintains it. Removing execution prescriptions removes no data-integrity requirements — only "when and who" moves downstream.
+Writing during execution is recommended, never required: handoffs close the correction loop and carry staleness downstream; a missing write-back is not a defect. Progress and resume are not managed by the dossier at all — they belong to the executor's own workflow. Removing execution prescriptions removes no data-integrity requirements — only "when and who" moves to the executor.
 
 ## Form Selection
 
@@ -74,11 +74,11 @@ All under `.plan-dossier/`. Each layer binds to one staleness mode, which determ
 
 | Layer | File | Readers | Change rule | Verification |
 |---|---|---|---|---|
-| L0 | plan.yaml | all roles, resident | frozen; changing it bumps the version and archives the old file | human judgment + schema check |
+| L0 | plan.yaml | planning/execution, resident | frozen; changing it bumps the version and archives the old file | human judgment + schema check |
 | L1 | tasks/NN_*.yaml | only the owning executor | frozen together with L0 | cites reference existence check |
 | L2 | ledger.jsonl | planner/executor, on demand | append-only; revisions via supersedes | lazy region_sha comparison (optional) |
-| L3 | handoff/NN_to_MM.md | downstream executor | appended after each completed step | latest file wins |
-| views | plan.view.md, review.packet.md | humans/reviewers | rebuildable at any time | derived; no verification needed |
+| L3 | handoff/NN_to_MM.md | downstream executor | executor opt-in write-back (recommended); format contract applies when written | three-section check (when present) |
+| views | plan.view.md, review.packet.md | humans/reviewers | rebuildable at any time | derived; consistency and isolation checked when rendered |
 
 ## Planning Workflow Skeleton
 
@@ -88,7 +88,7 @@ The five planning steps in order — full detail in [references/workflow-rules.m
 2. **Record while exploring** — append ledger entries for expensive searches.
 3. **Write L0 plan.yaml** — within the 2K budget, `excluded`/`gaps` present.
 4. **Write L1 task cards** — one per DAG node, cites pointing at ledger ids.
-5. **Freeze and render** — freeze L0 and L1, render views/plan.view.md when opted in; failed approval goes through a version bump.
+5. **Render, self-check, freeze** — render views/plan.view.md when opted in, run the checklist self-check, then freeze L0 and L1 for delivery; failed approval goes through a version bump.
 
 ## Invariants
 

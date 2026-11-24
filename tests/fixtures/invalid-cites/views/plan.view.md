@@ -6,10 +6,10 @@ Consolidate all payment validation into PaymentValidator
 
 ## DAG
 
-| id | status | task |
-|---|---|---|
-| s1 | pending | tasks/01_extract_validator.yaml |
-| s2 | pending | tasks/02_replace_callers.yaml |
+| id | task |
+|---|---|
+| s1 | tasks/01_extract_validator.yaml |
+| s2 | tasks/02_replace_callers.yaml |
 
 ## Exclusions
 

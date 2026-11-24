@@ -9,18 +9,18 @@
 交付前必须 100% 客观核验通过；任何一项不满足先修正再交付：
 
 1. 引用完整性：扫描全部任务卡的 `cites` 后，每个 ID 都能在 ledger.jsonl 中找到对应行；`dag[].task` 指向的文件都存在；解析全部 `risks[].mitigated_by` 锚点（`aN`、`sM.N`），每个都能在 L0 acceptance 或对应任务卡中找到条目。
-2. 信任分级完备：`trust: checked` 的条目全部带 `assertion`；`trust: unverified` 的条目全部带 `by` 和 `rederive_cost`。
+2. 信任分级完备：`trust: checked` 的条目全部带 `assertion`；`trust: unverified` 的条目全部带 `by`，constraints 还须带 `rederive_cost`。
 3. `excluded` 与 `gaps` 字段存在；为空时是 `[]`，`excluded` 为空需在 `open_questions` 注明原因。
-4. 预算达标：plan.yaml 估算不超过 2K tokens；每张任务卡不超过 1K；packet 不超过 4K 且末尾有未选入条目清单。
+4. 预算达标：plan.yaml 估算不超过 2K tokens；每张任务卡不超过 1K；packet（编译时适用）不超过 4K 且末尾有未选入条目清单。
 5. 职责分离：plan.yaml 中没有检索过程细节（那是账本的职责），没有源码原文摘录；任务卡中没有抄写账目内容或源码。
-6. 审查隔离：review.packet.md 中检索不到 plan.yaml 的 objective 原文、excluded 条目、账本 ID。
-7. 渲染一致：views/plan.view.md 由当前冻结版本的 L0 + L1 渲染，DAG 状态与 plan.yaml 一致。
+6. 审查隔离（编译 review.packet.md 时适用）：其中检索不到 plan.yaml 的 objective 原文、excluded 条目、账本 ID。
+7. 渲染一致（渲染时适用）：views/plan.view.md 由当前冻结版本的 L0 + L1 渲染，每个 DAG 节点 id 都有呈现。
 
 ### 执行后诊断项
 
-仅在执行期后复盘时检查，不阻塞规划交付：
+默认不阻塞规划交付；条目 8 为条件门禁——存在 handoff 文件时即阻断，不存在时不适用：
 
-8. 执行留痕：done 状态的任务卡应有完整的 handoff 文件。缺失说明下游未维护，报告即可。
+8. Handoff 格式门禁：目录中存在任何 `handoff/*.md` 时，三段必须齐全——存在即由 CLI 机械核验。没有 handoff 不是缺陷，回写是可选项。
 
 ### 人工目视检查项
 
