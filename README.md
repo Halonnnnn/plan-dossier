@@ -57,15 +57,57 @@ The spec is versioned in `spec/VERSION` and is currently `0-draft`, so it is not
 
 ## The Problem
 
-Planner → executor is the common pattern for multi-agent and resumable workflows. A strong model plans and writes a `plan.md`, and other agents read it and execute step by step. The process works. The artifact does not: **a human-facing view is used directly as the machine's execution state.**
+Planner → executor is the common pattern for multi-agent and resumable workflows: a strong reasoning model plans, writes the exploration and decisions into a `plan.md`, and other agents read the plan and execute step by step. The problem is that the planning investment leaks away at execution time. The felt symptoms: higher token bills, execution that strays from the plan, and a task stuck cycling through write code → build → test → check failure → locate cause → write code → ...
 
-A plan is a lossy compression of the exploration behind it. The executor only sees prose, so three kinds of knowledge are lost:
+The workflow itself is fine. The problem is artifact design: **a human-facing rendering view is used directly as the machine's execution state.**
 
-- **Negative knowledge.** The planner rejected options A and B because of a hidden dependency, then chose C. The plan says only "adopt C". When the executor meets resistance, it either re-investigates and spends tokens, or reverts to A and hits the same problem. That is a second planning pass.
-- **Original anchors.** The planner read line numbers, signatures, and raw data. The plan turns them into "follow the existing auth logic", so the executor has to grep again.
-- **Dynamic state.** A static plan cannot record deviations found during execution, so recovery after an interruption is imprecise.
+The planner spends heavy reasoning cost during planning, but that investment never reaches execution, in three ways:
 
-A longer plan does not fix this. Every handoff pays for it again, it stays lossy, and frequent edits erode trust. Split the content instead: **locations go into a ledger, dynamic state goes into a handoff layer, and rendered views are for humans.** Each layer is checked by the method that fits how it goes stale.
+**The plan cannot be mechanically verified, so drift is structural.** A prose plan usually lacks per-step verifiable acceptance criteria. Even when the executor claims to follow the plan, it cannot prove that the actual implementation matches the planned intent. This is not a discipline problem. The plan simply provides no explicit anchor to check against: the executor can neither tell whether it faithfully realized the plan, nor whether the plan still applies to the code it is editing. The gap between strictly following the plan and roughly following it only surfaces when the deliverable fails.
+
+**Planning knowledge is re-consumed at every handoff.** `plan.md` typically carries the planning process as one full narrative. Every executor, at every session handoff, has to re-read and re-understand the whole plan. The planning cost is paid once, but its result is consumed again by every reader and every handoff round — and much of it is irrelevant to the step the current executor owns. The planning investment never becomes directly reusable knowledge; it becomes context every executor must re-understand from scratch.
+
+**Deviations go unrecorded, so the real state drifts.** When the actual code conflicts with the plan, the executor improvises and moves on. If those adjustments are not explicitly recorded, the next executor inherits not the system's real state but the imagined state described by the original plan. Deviations compound silently: the more handoffs, the wider the gap between plan and reality, until interruption recovery and post-hoc review have no reliable ground to stand on.
+
+### Root Cause: A Plan Is a Lossy Compression
+
+These problems are not simply caused by an under-detailed plan. They come from information loss between the planning process and the delivered artifact. The planner gathered extensive context during exploration, but what lands in `plan.md` is usually only the tidied-up conclusions, and the compression loses at least three kinds of critical knowledge:
+
+#### 1. Negative knowledge: why the other options were rejected
+
+The planner may have ruled out options A and B because of a hidden dependency and chose C, but the plan usually records only "adopt C", not why A and B were infeasible.
+
+Facing resistance, the executor has two ways out: re-investigate and pay again for exploration that already happened; or fall back to A or B and unknowingly step into a trap the planner already ruled out. The first is repeated planning; the second is decision regression.
+
+#### 2. Original anchors: the evidence behind the conclusions
+
+During exploration the planner may have read specific line numbers, signatures, call relationships, and raw data, but written into the plan these get compressed into generalities like "follow the existing auth logic". The executor cannot locate the original evidence, so it re-greps and re-reads the code, paying a second retrieval cost.
+
+#### 3. Dynamic state: what actually happened during execution
+
+A static plan describes the intended path, not the actual execution state. Deviations, new findings, unresolved questions, and interim results have nowhere to land.
+
+Once a task is interrupted, the next executor struggles to tell which steps are done, which assumptions have failed, and where the work should resume.
+
+### The Fix: Separate Location, State, and Rendering
+
+Making `plan.md` longer does not solve any of this. More descriptive content does not create verifiable acceptance criteria; every handoff still re-reads a large context; and frequent edits erode the plan's credibility as a stable reference.
+
+The problem is not that the plan says too little. It is that information of different natures is packed into one artifact. The right move is to split layers, not to expand:
+
+**Locations go into a ledger, dynamic state goes into a handoff layer, and rendered views are for humans.**
+
+Three artifacts, three responsibilities:
+
+1. **Acceptance anchors**: constrain the execution result. L0's global acceptance plus per-card `sM.N` acceptance turn planned intent into mechanically checkable conditions, so deviation is caught early.
+2. **The ledger**: preserve planning knowledge. Key decisions, negative knowledge, original code anchors, and their references. An executor reads only its own task card plus citations, never the full exploration.
+3. **Handoffs**: preserve dynamic state. Actual progress, deviations, new findings, open questions, and a state snapshot, so the next session starts from what actually happened instead of guessing from a static plan.
+
+Each layer answers a different failure: acceptance anchors keep results verifiable, the ledger keeps planning knowledge reusable, handoffs keep dynamic state recoverable.
+
+`plan.md` stops carrying the machine's execution state and becomes only a human-facing rendering view of plan structure and execution progress.
+
+**The core principle: do not make the executor re-read the planner's thinking. Hand it directly locatable, verifiable, recoverable decision evidence.**
 
 ## How It Works
 
@@ -116,7 +158,7 @@ Role visibility at handoff:
 | Execution | full | own card only | index + on demand | full | on demand | full |
 | Review | not provided | not provided | not provided | not provided | full before/after of changed files | not provided |
 
-Budgets: L0 ≤ 2K tokens, each task card ≤ 1K, the packet ≤ 4K. When the packet overflows, truncate the ledger index first, then open_questions. `excluded`, `constraints`, `risks`, and `gaps` are never truncated. Assembly order matches prompt assembly order: stable content first (system prompt, plan.yaml, ledger index), volatile content last (current task card, handoff, on-demand snippets). This protects the prefix cache.
+Budgets: L0 ≈ 2K tokens and each task card ≈ 1K are default targets — overflow is reported to the user, not silently trimmed; the packet ≤ 4K is a hard cap with a truncation order. When the packet overflows, truncate the ledger index first, then open_questions. `excluded`, `constraints`, `risks`, and `gaps` are never truncated. Assembly order matches prompt assembly order: stable content first (system prompt, plan.yaml, ledger index), volatile content last (current task card, handoff, on-demand snippets). This protects the prefix cache.
 
 Artifacts are organized along two axes: how often they are read and how often they change. Content that is read often and changes rarely (the plan) must be short and frozen. Content that is read rarely and changes often (the ledger and handoffs) has no length limit and loads on demand.
 

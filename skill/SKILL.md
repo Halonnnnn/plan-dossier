@@ -86,7 +86,7 @@ The five planning steps in order — full detail in [references/workflow-rules.m
 
 1. **Fix the boundary** — finally verifiable deliverable, hard constraints, dependency and parallelizable set.
 2. **Record while exploring** — append ledger entries for expensive searches.
-3. **Write L0 plan.yaml** — within the 2K budget, `excluded`/`gaps` present.
+3. **Write L0 plan.yaml** — with 2K as the default target, `excluded`/`gaps` present.
 4. **Write L1 task cards** — one per DAG node, cites pointing at ledger ids.
 5. **Render, self-check, freeze** — render views/plan.view.md when opted in, run the checklist self-check, then freeze L0 and L1 for delivery; failed approval goes through a version bump.
 
@@ -100,7 +100,7 @@ Hard prohibitions; operational detail lives in the references:
 - A handoff missing any of its three sections is invalid; a review packet missing any of its four items is invalid.
 - review.packet.md never contains plan.yaml, task cards, `excluded`, ledger, or handoff content.
 - `excluded` and `gaps` must exist at freeze time — `[]` is allowed, omission is not.
-- Budget ceilings are hard: L0 ≤ 2K tokens, each card ≤ 1K, packet ≤ 4K; `excluded`, `constraints`, `risks`, `gaps` are never truncated.
+- Budgets are targets, not hard caps: L0 ≈ 2K tokens, each card ≈ 1K, packet ≤ 4K; on overflow, report the overflow and sink/compress/keep options to the user instead of trimming silently. `excluded`, `constraints`, `risks`, `gaps` are never truncated.
 
 ## References
 

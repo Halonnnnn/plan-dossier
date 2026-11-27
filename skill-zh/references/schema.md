@@ -53,7 +53,7 @@ open_questions:
 
 编写规则：
 
-- 全文控制在 2K tokens 以内。任务细节已移入 L1，超预算说明有内容应下沉到 ledger 或任务卡。
+- 2K tokens 是默认目标而非上限：L0 按任务实际需要写，保持索引性——细节归 L1 卡片或 ledger。超限时向用户报告并给出下沉/压缩/保留选项。
 - `excluded` 与 `gaps` 在计划冻结时必须存在，可为 `[]`，不得省略字段。`excluded` 为空时在 `open_questions` 注明"未做排除"；`gaps` 是规划方对"哪些判断维度明确没做"的显式回答，空列表表示已知维度均已覆盖。
 - `gaps` 与 `open_questions` 语义不同：gaps 是已知未覆盖、无需回答的维度；open_questions 是待回答、待裁决的问题。两者不得混放。
 - `risks[].mitigated_by` 非空，锚点格式：`aN` 指向 L0 acceptance 第 N 条，`sM.N` 指向任务卡 M 的 acceptance 第 N 条。给不出锚点的风险不是"已设防"，降级写进 `open_questions` 并注明。
@@ -85,7 +85,7 @@ acceptance:
 编写规则：
 
 - 一张卡一个 DAG 节点，文件名 `NN_动作简名.yaml`，NN 与 `dag[].id` 的序号一致。L0 的 dag 是权威拓扑；卡内 `depends_on` 是单卡自包含副本，必须与 L0 一致。
-- 单卡控制在 1K tokens 以内。超出说明卡内混入了其他节点的内容或账本细节。
+- 1K tokens 是默认目标而非上限；超出通常说明卡内混入了其他节点的内容或账本细节——报告并交由用户决定是否下沉。
 - `cites` 只引用 ledger.jsonl 中已存在的条目 ID，不复制条目内容，更不抄源码原文。执行方凭 ID 去账本查定位，再按定位读源码。
 - `acceptance` 是本节点的可验证断言，与 L0 的全局验收互补，不得为空。
 - 任务卡随 L0 一起冻结（冻结与升版本规则见 [workflow-rules.md](workflow-rules.md)）。

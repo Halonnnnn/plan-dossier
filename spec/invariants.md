@@ -25,7 +25,7 @@ of this list to preserve numbering.
 
 ## Warns (heuristics, never blocking)
 
-8. **Token budget**: plan.yaml estimated ≤ 2K tokens, each task card ≤ 1K (chars/4 heuristic).
+8. **Token budget**: plan.yaml and each task card token-estimated (chars/4 heuristic) against default targets of 2K / 1K; overflow is a report-to-user signal, not a failure.
 9. **Empty exclusions explained**: when `excluded` is `[]`, `open_questions` should note
    "no exclusions made".
 10. **Review isolation**: review.packet.md contains no ledger ids (`L-<digits>`) and no excluded

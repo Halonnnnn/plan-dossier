@@ -53,7 +53,7 @@ open_questions:
 
 Writing rules:
 
-- Keep the file within 2K tokens. Task details have moved to L1; exceeding the budget means something should sink into the ledger or a task card.
+- 2K tokens is a default target, not a cap: write L0 to what the task actually needs while keeping it an index — details belong in L1 cards or the ledger. On overflow, report to the user with sink/compress/keep options.
 - `excluded` and `gaps` must exist at freeze time, may be `[]`, and must not be omitted. When `excluded` is empty, note "no exclusions made" in `open_questions`. `gaps` is the planner's explicit answer to "which judgment dimensions were deliberately left uncovered"; an empty list means every known dimension is covered.
 - `gaps` and `open_questions` mean different things: gaps are known uncovered dimensions that need no answer; open_questions are pending questions awaiting an answer or ruling. Never mix them.
 - Every `risks[].mitigated_by` must be non-empty. Anchor format: `aN` points to the Nth entry of L0 acceptance; `sM.N` points to the Nth acceptance entry of task card M. A risk with no anchor is not "mitigated" — demote it to `open_questions` with a note.
@@ -85,7 +85,7 @@ acceptance:
 Writing rules:
 
 - One card per DAG node, filename `NN_action_summary.yaml`, NN matching the `dag[].id` number. L0's dag is the authoritative topology; the card's `depends_on` is a self-contained copy that must equal L0's.
-- Keep each card within 1K tokens. Exceeding it means the card mixed in another node's content or ledger details.
+- 1K tokens is a default target, not a cap; overflow usually means the card mixed in another node's content or ledger details — report it and let the user decide whether to sink them.
 - `cites` references only entry IDs that already exist in ledger.jsonl — never copies entry content, never quotes source. The executor looks up the locator by ID in the ledger, then reads the source at that location.
 - `acceptance` holds this node's verifiable assertions, complementary to L0's global acceptance, and must not be empty.
 - Task cards freeze together with L0 (freeze and version-bump rules: [workflow-rules.md](workflow-rules.md)).
