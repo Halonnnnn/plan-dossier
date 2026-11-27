@@ -85,7 +85,7 @@ Plan Dossier 是规划与工件编写 skill，不是执行编排框架。它产�
 
 1. **明确边界**——最终可验证的产出、全局硬约束、依赖与可并行集合。
 2. **边探索边记账**——昂贵搜索按记录标准追加 ledger 条目。
-3. **写 L0 plan.yaml**——2K 预算内，`excluded`/`gaps` 齐备。
+3. **写 L0 plan.yaml**——2K 为默认目标，`excluded`/`gaps` 齐备。
 4. **写 L1 任务卡**——每个 DAG 节点一张，cites 指向账本条目。
 5. **渲染、自检与冻结**——按需渲染 views/plan.view.md，对照 checklist 自检通过后冻结 L0 与 L1 交付；审批不通过走升版本。
 
@@ -99,7 +99,7 @@ Plan Dossier 是规划与工件编写 skill，不是执行编排框架。它产�
 - handoff 缺三段中任一段即非法；review packet 缺四项中任一项即非法。
 - review.packet.md 永不包含 plan.yaml、任务卡、`excluded`、账本、handoff 内容。
 - `excluded` 与 `gaps` 冻结时必须存在——可为 `[]`，不得省略。
-- 预算上限是硬性的：L0 ≤ 2K tokens、单卡 ≤ 1K、packet ≤ 4K；`excluded`、`constraints`、`risks`、`gaps` 永不截断。
+- 预算是目标值而非硬上限：L0 ≈ 2K tokens、单卡 ≈ 1K、packet ≤ 4K；超限时向用户报告超限幅度与下沉/压缩/保留选项，不得静默删减。`excluded`、`constraints`、`risks`、`gaps` 永不截断。
 
 ## 参考文件
 

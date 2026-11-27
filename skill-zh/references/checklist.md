@@ -11,7 +11,7 @@
 1. 引用完整性：扫描全部任务卡的 `cites` 后，每个 ID 都能在 ledger.jsonl 中找到对应行；`dag[].task` 指向的文件都存在；解析全部 `risks[].mitigated_by` 锚点（`aN`、`sM.N`），每个都能在 L0 acceptance 或对应任务卡中找到条目。
 2. 信任分级完备：`trust: checked` 的条目全部带 `assertion`；`trust: unverified` 的条目全部带 `by`，constraints 还须带 `rederive_cost`。
 3. `excluded` 与 `gaps` 字段存在；为空时是 `[]`，`excluded` 为空需在 `open_questions` 注明原因。
-4. 预算达标：plan.yaml 估算不超过 2K tokens；每张任务卡不超过 1K；packet（编译时适用）不超过 4K 且末尾有未选入条目清单。
+4. 预算处理：plan.yaml 与每张任务卡已计算 token 估算；超出默认目标（2K / 1K）的部分已向用户报告并给出下沉/压缩/保留选项；packet（编译时适用）不超过 4K 且末尾有未选入条目清单。
 5. 职责分离：plan.yaml 中没有检索过程细节（那是账本的职责），没有源码原文摘录；任务卡中没有抄写账目内容或源码。
 6. 审查隔离（编译 review.packet.md 时适用）：其中检索不到 plan.yaml 的 objective 原文、excluded 条目、账本 ID。
 7. 渲染一致（渲染时适用）：views/plan.view.md 由当前冻结版本的 L0 + L1 渲染，每个 DAG 节点 id 都有呈现。

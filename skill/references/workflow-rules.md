@@ -6,7 +6,7 @@ Phase workflows (planning, handoff assembly, execution, review), freeze and vers
 
 1. **Fix the boundary.** Determine three things: the finally verifiable deliverable; global inviolable hard constraints; subtask dependencies and the parallelizable set. If you cannot state them clearly, confirm with the user first — never proceed on a vague goal.
 2. **Record while exploring.** After each expensive search, append a ledger entry per the recording criteria table. By the end of planning the ledger is in place, so task cards have something to cite.
-3. **Write L0 plan.yaml.** Follow the schema; respect the 2K budget and the required `excluded`/`gaps` rules.
+3. **Write L0 plan.yaml.** Follow the schema; treat the 2K budget as a default target (on overflow, report to the user) and the `excluded`/`gaps` rules as required.
 4. **Write L1 task cards.** One card per DAG node, cites pointing at ledger entries.
 5. **Render, self-check, freeze.** Generate views/plan.view.md if the user opted for rendering (otherwise the approval target is the plan.yaml and task card content), run the checklist self-check, then freeze L0 and L1 for delivery. If approval fails, bump the version and rewrite; never edit frozen files in place.
 
